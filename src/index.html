@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stroke & Turn Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0a1628;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #1e293b;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.3px;
+    }
+    header p {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* ── Status card ── */
+    #status-card {
+      margin: 16px 24px;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      background: #0f2040;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.3s;
+    }
+    #status-card.connected   { border-color: #00c2e0; }
+    #status-card.error       { border-color: #ef4444; }
+    #status-card.waiting     { border-color: #f59e0b; }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #475569;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.connected { background: #00c2e0; box-shadow: 0 0 6px #00c2e0; }
+    .status-dot.waiting   { background: #f59e0b; }
+    .status-dot.error     { background: #ef4444; }
+    .status-dot.pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .status-text { flex: 1; min-width: 0; }
+    .status-text .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .status-text .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Current heat display ── */
+    #heat-display {
+      margin: 0 24px;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      background: #0f2040;
+      padding: 14px 16px;
+      display: none;
+    }
+    #heat-display.visible { display: block; }
+    #heat-display .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+    }
+    #heat-display .heat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #00c2e0;
+      margin-top: 4px;
+    }
+
+    /* ── File picker ── */
+    #file-section {
+      margin: 16px 24px 0;
+    }
+    #file-section .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    #file-path {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #0f2040;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      word-break: break-all;
+    }
+    #file-path.has-file { color: #e2e8f0; border-color: #334155; }
+
+    #select-btn {
+      width: 100%;
+      padding: 10px;
+      background: #00c2e0;
+      color: #0a1628;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #select-btn:hover { background: #00d4f5; }
+    #select-btn.has-file {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    #select-btn.has-file:hover { border-color: #64748b; color: #e2e8f0; }
+
+    /* ── Log ── */
+    #log-section {
+      flex: 1;
+      margin: 16px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    #log-section .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    #log {
+      flex: 1;
+      background: #060e1a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      overflow-y: auto;
+      font-family: "Consolas", "SF Mono", monospace;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .log-line { color: #64748b; }
+    .log-line.success { color: #34d399; }
+    .log-line.error   { color: #f87171; }
+    .log-line.warn    { color: #fbbf24; }
+    .log-line .time   { color: #334155; margin-right: 6px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Stroke &amp; Turn Agent</h1>
+    <p>Automatic heat advancement from Meet Maestro</p>
+  </header>
+
+  <!-- Connection status -->
+  <div id="status-card">
+    <div class="status-dot pulse" id="status-dot"></div>
+    <div class="status-text">
+      <div class="label">Meet</div>
+      <div class="value" id="status-value">Connecting to Firebase…</div>
+    </div>
+  </div>
+
+  <!-- Current heat (shown after first push) -->
+  <div id="heat-display">
+    <div class="label">Last pushed heat</div>
+    <div class="heat-value" id="heat-value">—</div>
+  </div>
+
+  <!-- File picker -->
+  <div id="file-section">
+    <div class="label">Timing file</div>
+    <div id="file-path">No file selected</div>
+    <button id="select-btn">Select timing_system_configuration.json</button>
+  </div>
+
+  <!-- Activity log -->
+  <div id="log-section">
+    <div class="label">Activity</div>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const statusCard  = document.getElementById("status-card");
+    const statusDot   = document.getElementById("status-dot");
+    const statusValue = document.getElementById("status-value");
+    const heatDisplay = document.getElementById("heat-display");
+    const heatValue   = document.getElementById("heat-value");
+    const filePathEl  = document.getElementById("file-path");
+    const selectBtn   = document.getElementById("select-btn");
+    const logEl       = document.getElementById("log");
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function addLog({ msg, type = "info", time }) {
+      const line = document.createElement("div");
+      line.className = `log-line ${type}`;
+      line.innerHTML = `<span class="time">[${time}]</span>${escapeHtml(msg)}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function setStatus(type, text) {
+      statusCard.className = type;
+      statusDot.className = `status-dot ${type}`;
+      if (type === "connecting" || type === "waiting") statusDot.classList.add("pulse");
+      statusValue.textContent = text;
+    }
+
+    function setFilePath(filePath) {
+      if (filePath) {
+        // Show just the filename, not the full path (cleaner UI)
+        const parts = filePath.replace(/\\/g, "/").split("/");
+        filePathEl.textContent = parts[parts.length - 1];
+        filePathEl.title = filePath; // full path on hover
+        filePathEl.classList.add("has-file");
+        selectBtn.textContent = "Change file";
+        selectBtn.classList.add("has-file");
+      }
+    }
+
+    // ── Status updates from main process ─────────────────────────────────────
+
+    window.agent.onStatus((data) => {
+      switch (data.type) {
+        case "connecting":
+          setStatus("connecting", "Connecting…");
+          break;
+        case "waiting":
+          setStatus("waiting", "Waiting — open Stroke & Turn as Chief Judge");
+          break;
+        case "connected":
+          setStatus("connected", data.meetName);
+          break;
+        case "error":
+          setStatus("error", `Error: ${data.msg}`);
+          break;
+        case "heat":
+          const strokeLabel = data.stroke ? ` · ${data.stroke}` : "";
+          heatValue.textContent = `Event ${data.event} · Heat ${data.heat}${strokeLabel}`;
+          heatDisplay.classList.add("visible");
+          break;
+      }
+    });
+
+    // ── Log updates from main process ─────────────────────────────────────────
+
+    window.agent.onLog((data) => addLog(data));
+
+    // ── File picker button ────────────────────────────────────────────────────
+
+    selectBtn.addEventListener("click", async () => {
+      const filePath = await window.agent.selectFile();
+      if (filePath) setFilePath(filePath);
+    });
+
+    // ── On load: restore saved settings ──────────────────────────────────────
+
+    window.agent.getSettings().then((settings) => {
+      if (settings.watchFile) {
+        setFilePath(settings.watchFile);
+      }
+    });
+  </script>
+
+</body>
+</html>
