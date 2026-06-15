@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stroke & Turn Agent</title>
+  <title>DQSync Agent</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -198,12 +198,24 @@
 <body>
 
   <header>
-    <h1>Stroke &amp; Turn Agent</h1>
-    <p>Automatic heat advancement from Meet Maestro</p>
+    <h1>DQSync Agent</h1>
+    <p>Automatic heat advancement for DQSync meets</p>
   </header>
 
+  <!-- PIN entry -->
+  <div id="pin-section" style="margin: 24px 24px 0;">
+    <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;margin-bottom:8px;">Meet PIN</div>
+    <input id="pin-input" type="text" maxlength="6" placeholder="Enter PIN"
+      style="width:100%;padding:10px 12px;background:#0f2040;border:1px solid #1e293b;border-radius:8px;color:#fff;font-size:16px;letter-spacing:0.2em;text-align:center;outline:none;margin-bottom:8px;font-family:inherit;" />
+    <button id="pin-btn"
+      style="width:100%;padding:10px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+      Connect to Meet
+    </button>
+    <div id="pin-error" style="color:#f87171;font-size:12px;margin-top:8px;text-align:center;display:none;"></div>
+  </div>
+
   <!-- Connection status -->
-  <div id="status-card">
+  <div id="status-card" style="display:none">
     <div class="status-dot pulse" id="status-dot"></div>
     <div class="status-text">
       <div class="label">Meet</div>
@@ -218,14 +230,14 @@
   </div>
 
   <!-- File picker -->
-  <div id="file-section">
+  <div id="file-section" style="display:none">
     <div class="label">Timing file</div>
     <div id="file-path">No file selected</div>
     <button id="select-btn">Select timing_system_configuration.json</button>
   </div>
 
   <!-- Activity log -->
-  <div id="log-section">
+  <div id="log-section" style="display:none">
     <div class="label">Activity</div>
     <div id="log"></div>
   </div>
@@ -239,6 +251,37 @@
     const filePathEl  = document.getElementById("file-path");
     const selectBtn   = document.getElementById("select-btn");
     const logEl       = document.getElementById("log");
+
+    const pinSection = document.getElementById('pin-section');
+    const pinInput = document.getElementById('pin-input');
+    const pinBtn = document.getElementById('pin-btn');
+    const pinError = document.getElementById('pin-error');
+    const fileSection = document.getElementById('file-section');
+    const logSection = document.getElementById('log-section');
+
+    pinBtn.addEventListener('click', async () => {
+      const pin = pinInput.value.trim().toUpperCase();
+      if (!pin) return;
+      pinBtn.disabled = true;
+      pinBtn.textContent = 'Connecting…';
+      pinError.style.display = 'none';
+      const result = await window.agent.connectByPin(pin);
+      if (result.success) {
+        pinSection.style.display = 'none';
+        statusCard.style.display = 'flex';
+        fileSection.style.display = 'block';
+        logSection.style.display = 'flex';
+      } else {
+        pinError.textContent = result.error;
+        pinError.style.display = 'block';
+        pinBtn.disabled = false;
+        pinBtn.textContent = 'Connect to Meet';
+      }
+    });
+
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') pinBtn.click();
+    });
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -310,9 +353,11 @@
 
     // ── On load: restore saved settings ──────────────────────────────────────
 
+    // Restore saved PIN on load
     window.agent.getSettings().then((settings) => {
-      if (settings.watchFile) {
-        setFilePath(settings.watchFile);
+      if (settings.watchFile) setFilePath(settings.watchFile);
+      if (settings.savedPin) {
+        pinInput.value = settings.savedPin;
       }
     });
   </script>

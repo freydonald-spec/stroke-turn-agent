@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld("agent", {
   // Open native file picker
   selectFile: () => ipcRenderer.invoke("select-file"),
 
+  // Connect to a meet by PIN
+  connectByPin: (pin) => ipcRenderer.invoke("connect-by-pin", pin),
+
   // Listen for log messages from main process
   onLog: (callback) => ipcRenderer.on("log", (_event, data) => callback(data)),
 

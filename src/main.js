@@ -1,5 +1,5 @@
 /**
- * Stroke & Turn — Meet Agent (Electron)
+ * DQSync Agent (Electron)
  * Main process: Firebase, file watcher, IPC to renderer
  */
 
@@ -14,6 +14,10 @@ const {
   getDoc,
   onSnapshot,
   updateDoc,
+  getDocs,
+  collection,
+  query,
+  where,
 } = require("firebase/firestore");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
@@ -65,7 +69,6 @@ let lastHeat      = null;
 let debounceTimer = null;
 let watcher       = null;
 let watchFile     = null;
-let unsubMeet     = null;
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -172,47 +175,34 @@ function startWatcher(filePath) {
     .on("error",  (err) => log(`❌ Watcher error: ${err.message}`, "error"));
 }
 
-// ── Active meet listener ──────────────────────────────────────────────────────
-
-function listenForActiveMeet() {
-  log("🔍 Looking up active meet...");
-  sendStatus({ type: "connecting" });
-  if (unsubMeet) unsubMeet();
-
-  unsubMeet = onSnapshot(
-    doc(db, "config", "activeMeet"),
-    (snap) => {
-      if (!snap.exists()) {
-        if (!meetId) {
-          log("⏳ Waiting for Chief Judge to open the app...", "warn");
-          sendStatus({ type: "waiting" });
-        }
-        return;
-      }
-      const data = snap.data();
-      const newMeetId   = data.meetId;
-      const newMeetName = data.meetName ?? "Unnamed Meet";
-      if (newMeetId !== meetId) {
-        meetId    = newMeetId;
-        meetName  = newMeetName;
-        lastEvent = null;
-        lastHeat  = null;
-        log(`✅ Connected to: ${meetName}`, "success");
-        sendStatus({ type: "connected", meetName });
-        // Trigger 1: meet connected and watch file already saved from a prior session
-        if (watchFile && fs.existsSync(watchFile)) {
-          startWatcher(watchFile);
-        }
-      }
-    },
-    (err) => {
-      log(`❌ Firebase error: ${err.message}`, "error");
-      sendStatus({ type: "error", msg: err.message });
-    }
-  );
-}
-
 // ── IPC handlers ──────────────────────────────────────────────────────────────
+
+ipcMain.handle('connect-by-pin', async (_event, pin) => {
+  try {
+    const q = query(collection(db, 'meets'), where('pin', '==', pin));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      return { success: false, error: 'PIN not found. Check with your meet host.' };
+    }
+    const meetDoc = snap.docs[0];
+    meetId = meetDoc.id;
+    meetName = meetDoc.data().meetName ?? 'Unnamed Meet';
+    lastEvent = null;
+    lastHeat = null;
+    log(`✅ Connected to: ${meetName}`, 'success');
+    sendStatus({ type: 'connected', meetName });
+    const settings = loadSettings();
+    settings.savedPin = pin;
+    saveSettings(settings);
+    if (watchFile && fs.existsSync(watchFile)) {
+      startWatcher(watchFile);
+    }
+    return { success: true };
+  } catch (err) {
+    log(`❌ PIN lookup failed: ${err.message}`, 'error');
+    return { success: false, error: err.message };
+  }
+});
 
 // Trigger 2: user manually selects the file via the button
 ipcMain.handle("select-file", async () => {
@@ -253,7 +243,7 @@ function createWindow() {
     width: 520,
     height: 600,
     resizable: false,
-    title: "Stroke & Turn Agent",
+    title: "DQSync Agent",
     backgroundColor: "#0a1628",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -277,12 +267,9 @@ app.whenReady().then(() => {
     watchFile = settings.watchFile;
     log(`📁 Using saved file: ${path.basename(settings.watchFile)}`);
   }
-
-  listenForActiveMeet();
 });
 
 app.on("window-all-closed", () => {
   if (watcher) watcher.close();
-  if (unsubMeet) unsubMeet();
   app.quit();
 });

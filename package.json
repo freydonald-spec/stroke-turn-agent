@@ -1,7 +1,7 @@
 {
-  "name": "stroke-turn-agent",
+  "name": "dqsync-agent",
   "version": "1.0.0",
-  "description": "Stroke & Turn Meet Agent — auto-advances heats from Meet Maestro",
+  "description": "DQSync Agent — automatic heat advancement from Meet Maestro",
   "author": "Stroke & Turn",
   "main": "src/main.js",
   "scripts": {
@@ -18,8 +18,8 @@
     "electron-builder": "^24.13.0"
   },
   "build": {
-    "appId": "com.strokeandturn.agent",
-    "productName": "Stroke & Turn Agent",
+    "appId": "com.dqsync.agent",
+    "productName": "DQSync Agent",
     "win": {
       "target": "nsis"
     },
