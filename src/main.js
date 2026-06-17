@@ -340,6 +340,13 @@ function createWindow() {
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  // Ensure only one instance runs at a time
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+    return;
+  }
+
   createWindow();
 
   // Show the real app version in the UI (kept in sync with package.json).
