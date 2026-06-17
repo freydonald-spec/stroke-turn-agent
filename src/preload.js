@@ -21,4 +21,7 @@ contextBridge.exposeInMainWorld("agent", {
 
   // Listen for status updates
   onStatus: (callback) => ipcRenderer.on("status", (_event, data) => callback(data)),
+
+  // Listen for auto-update status
+  onUpdate: (callback) => ipcRenderer.on("update-status", (_event, data) => callback(data)),
 });

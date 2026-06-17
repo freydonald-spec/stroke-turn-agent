@@ -201,6 +201,7 @@
     <h1>DQSync Agent</h1>
     <p>Automatic heat advancement for DQSync meets</p>
     <p id="app-version" style="font-size:11px;color:#334155;margin-top:2px;">v1.0.3</p>
+    <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
   </header>
 
   <!-- PIN entry -->
@@ -344,6 +345,16 @@
     // ── Log updates from main process ─────────────────────────────────────────
 
     window.agent.onLog((data) => addLog(data));
+
+    // ── Auto-update status ─────────────────────────────────────────────────────
+
+    window.agent.onUpdate((data) => {
+      const el = document.getElementById('update-status');
+      if (el) {
+        el.textContent = data.msg;
+        el.style.display = 'block';
+      }
+    });
 
     // ── File picker button ────────────────────────────────────────────────────
 

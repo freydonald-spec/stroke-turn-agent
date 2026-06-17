@@ -21,6 +21,7 @@ const {
   serverTimestamp,
 } = require("firebase/firestore");
 const { getAuth, signInAnonymously } = require("firebase/auth");
+const { autoUpdater } = require("electron-updater");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
 
@@ -88,6 +89,11 @@ function log(msg, type = "info") {
 function sendStatus(status) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("status", status);
+  }
+  if (status.type === "update" || status.type === "update-ready") {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("update-status", status);
+    }
   }
 }
 
@@ -341,6 +347,55 @@ app.whenReady().then(async () => {
     mainWindow.webContents.executeJavaScript(
       `document.getElementById('app-version').textContent = 'v${app.getVersion()}';`
     );
+  });
+
+  // ── Auto-update (GitHub Releases via electron-updater) ────────────────────
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // Check for updates 3 seconds after startup (give app time to load)
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      log(`⚠️ Update check failed: ${err.message}`, "warn");
+    });
+  }, 3000);
+
+  // Update available — notify in activity log
+  autoUpdater.on("update-available", (info) => {
+    log(`🔄 Update available: v${info.version} — downloading...`, "warn");
+    sendStatus({ type: "update", msg: `Downloading v${info.version}...` });
+  });
+
+  // No update available
+  autoUpdater.on("update-not-available", () => {
+    log(`✅ DQSync Agent is up to date (v${app.getVersion()})`, "success");
+  });
+
+  // Download progress
+  autoUpdater.on("download-progress", (progress) => {
+    log(`⬇️ Downloading update: ${Math.round(progress.percent)}%`);
+  });
+
+  // Update downloaded — prompt user to restart
+  autoUpdater.on("update-downloaded", (info) => {
+    log(`✅ Update v${info.version} downloaded — will install on restart`, "success");
+    sendStatus({ type: "update-ready", msg: `v${info.version} ready — restart to update` });
+    // Show a dialog asking user to restart
+    const { dialog } = require("electron");
+    dialog.showMessageBox(mainWindow, {
+      type: "info",
+      title: "Update Ready",
+      message: `DQSync Agent v${info.version} is ready to install.`,
+      detail: "Restart now to apply the update.",
+      buttons: ["Restart Now", "Later"],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.on("error", (err) => {
+    log(`❌ Update error: ${err.message}`, "error");
   });
 
   if (!initDb()) return;
