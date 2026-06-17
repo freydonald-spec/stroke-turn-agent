@@ -6,6 +6,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const chokidar = require("chokidar");
 const { initializeApp: initFirebase } = require("firebase/app");
 const {
@@ -356,6 +357,21 @@ function createTray() {
   tray.on("click", () => { if (mainWindow) mainWindow.show(); });
 }
 
+// ── Update cache cleanup ──────────────────────────────────────────────────────
+// electron-updater stages downloads in <LOCALAPPDATA>/dqsync-agent-updater/pending
+// (updaterCacheDirName from app-update.yml). Interrupted/failed updates can leave
+// a stale or locked file there, which then fails the rename with EPERM on the
+// next attempt. Clearing the staging folder before each download avoids that.
+function clearUpdateCache() {
+  try {
+    const base = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    const pending = path.join(base, "dqsync-agent-updater", "pending");
+    fs.rmSync(pending, { recursive: true, force: true });
+  } catch (err) {
+    log(`⚠️ Could not clear update cache: ${err.message}`, "warn");
+  }
+}
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
@@ -381,6 +397,12 @@ app.whenReady().then(async () => {
   // background. quitAndInstall() fully closes the app before installing.
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
+  // Full download to staging (no in-place blockmap patching) — more robust and
+  // avoids a class of EPERM/file-lock errors during the pending-folder rename.
+  autoUpdater.disableDifferentialDownload = true;
+
+  // Remove any leftover staged download from a prior interrupted update.
+  clearUpdateCache();
 
   // Check for updates 3 seconds after startup (give app time to load)
   setTimeout(() => {
@@ -401,7 +423,10 @@ app.whenReady().then(async () => {
       buttons: ["Download & Install", "Later"],
       defaultId: 0
     }).then(({ response }) => {
-      if (response === 0) autoUpdater.downloadUpdate();
+      if (response === 0) {
+        clearUpdateCache();
+        autoUpdater.downloadUpdate();
+      }
     });
   });
 
@@ -443,6 +468,8 @@ app.whenReady().then(async () => {
 
   autoUpdater.on("error", (err) => {
     log(`❌ Update error: ${err.message}`, "error");
+    // Clear staging so a retry starts clean (handles EPERM/locked-file leftovers).
+    clearUpdateCache();
   });
 
   if (!initDb()) return;
