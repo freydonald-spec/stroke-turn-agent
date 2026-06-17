@@ -335,6 +335,14 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow();
+
+  // Show the real app version in the UI (kept in sync with package.json).
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(
+      `document.getElementById('app-version').textContent = 'v${app.getVersion()}';`
+    );
+  });
+
   if (!initDb()) return;
 
   const authed = await initAuth();
