@@ -265,7 +265,7 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     }
     const meetDoc = snap.docs[0];
     meetId = meetDoc.id;
-    meetName = meetDoc.data().meetName ?? 'Unnamed Meet';
+    meetName = meetDoc.data().name ?? meetDoc.data().meetName ?? "Unnamed Meet";
     lastEvent = null;
     lastHeat = null;
     log(`✅ Connected to: ${meetName}`, 'success');
@@ -337,6 +337,25 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false);
 }
 
+// ── System tray ───────────────────────────────────────────────────────────────
+
+const { Tray, Menu, nativeImage } = require("electron");
+let tray = null;
+
+function createTray() {
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setToolTip("DQSync Agent v" + app.getVersion());
+  const contextMenu = Menu.buildFromTemplate([
+    { label: "DQSync Agent v" + app.getVersion(), enabled: false },
+    { type: "separator" },
+    { label: "Show", click: () => { if (mainWindow) mainWindow.show(); } },
+    { type: "separator" },
+    { label: "Quit", click: () => { app.isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.on("click", () => { if (mainWindow) mainWindow.show(); });
+}
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
@@ -348,6 +367,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  createTray();
 
   // Show the real app version in the UI (kept in sync with package.json).
   mainWindow.webContents.on('did-finish-load', () => {
@@ -427,19 +447,25 @@ app.on("window-all-closed", () => {
 // On quit, mark the agent disconnected on the meet doc so the monitor sees it
 // go offline cleanly. Defer the actual quit until the async write finishes.
 let writingDisconnect = false;
-app.on("before-quit", async (event) => {
+app.on("before-quit", (event) => {
   if (writingDisconnect || !meetId) return;
   writingDisconnect = true;
   event.preventDefault();
   if (heartbeatTimer) clearInterval(heartbeatTimer);
-  try {
-    await updateDoc(doc(db, "meets", meetId), {
+
+  // Never hang on quit — force-quit after 3s if the disconnect write stalls.
+  const forceQuit = setTimeout(() => { app.quit(); }, 3000);
+
+  Promise.resolve(
+    updateDoc(doc(db, "meets", meetId), {
       agentStatus: "disconnected",
       agentDisconnectedAt: serverTimestamp(),
       agentLastSeen: serverTimestamp(),
-    });
-  } catch (err) {
-    log(`❌ Could not write disconnect: ${err.message}`, "error");
-  }
-  app.quit();
+    }).catch((err) => {
+      log(`❌ Could not write disconnect: ${err.message}`, "error");
+    })
+  ).finally(() => {
+    clearTimeout(forceQuit);
+    app.quit();
+  });
 });
