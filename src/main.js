@@ -18,6 +18,7 @@ const {
   collection,
   query,
   where,
+  serverTimestamp,
 } = require("firebase/firestore");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ const FIREBASE_CONFIG = {
 };
 
 const DEBOUNCE_MS = 800;
+const HEARTBEAT_MS = 30_000;
 
 // ── Persistent settings ───────────────────────────────────────────────────────
 // Stored automatically at: C:\Users\<name>\AppData\Roaming\stroke-turn-agent\
@@ -69,6 +71,7 @@ let lastHeat      = null;
 let debounceTimer = null;
 let watcher       = null;
 let watchFile     = null;
+let heartbeatTimer = null;
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +123,54 @@ async function pushUpdate(currentEvent, currentHeat) {
     sendStatus({ type: "heat", event: currentEvent, heat: currentHeat, stroke });
   } catch (err) {
     log(`❌ Failed to push: ${err.message}`, "error");
+    writeAgentError(`Push failed: ${err.message}`);
   }
+}
+
+// ── Heartbeat ───────────────────────────────────────────────────────────────
+// Stamp the meet doc every 30s so the web app (Observer view) can show whether
+// the agent is alive and when it last pushed.
+
+async function writeHeartbeat() {
+  if (!meetId) return;
+  // If a watch file is configured but missing on disk, surface that distinctly
+  // so the monitor can show "file not found" rather than just "connected".
+  const fileMissing = !!watchFile && !fs.existsSync(watchFile);
+  try {
+    await updateDoc(doc(db, "meets", meetId), {
+      agentLastSeen: serverTimestamp(),
+      agentStatus: fileMissing ? "file_not_found" : "connected",
+      agentVersion: app.getVersion(),
+      agentWatchFile: watchFile ?? null,
+      agentMeetId: meetId,
+      // Surface a missing-file error, otherwise clear any previous error.
+      agentLastError: fileMissing ? `File not found: ${watchFile}` : null,
+    });
+  } catch (err) {
+    log(`❌ Heartbeat failed: ${err.message}`, "error");
+  }
+}
+
+// Write an agent-side error to the meet doc so it can be read remotely on the
+// monitor. Only writes when connected to a meet (meetId set).
+async function writeAgentError(errorMsg) {
+  if (!meetId) return;
+  try {
+    await updateDoc(doc(db, "meets", meetId), {
+      agentStatus: "error",
+      agentLastError: errorMsg,
+      agentLastErrorAt: serverTimestamp(),
+      agentLastSeen: serverTimestamp(),
+    });
+  } catch (err) {
+    log(`❌ Could not write agent error: ${err.message}`, "error");
+  }
+}
+
+function startHeartbeat() {
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  writeHeartbeat(); // immediate first beat on connect
+  heartbeatTimer = setInterval(writeHeartbeat, HEARTBEAT_MS);
 }
 
 // ── File watching ─────────────────────────────────────────────────────────────
@@ -172,7 +222,10 @@ function startWatcher(filePath) {
   watcher
     .on("change", debouncedChange)
     .on("add",    debouncedChange)
-    .on("error",  (err) => log(`❌ Watcher error: ${err.message}`, "error"));
+    .on("error",  (err) => {
+      log(`❌ Watcher error: ${err.message}`, "error");
+      writeAgentError(`File watcher error: ${err.message}`);
+    });
 }
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
@@ -191,6 +244,7 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     lastHeat = null;
     log(`✅ Connected to: ${meetName}`, 'success');
     sendStatus({ type: 'connected', meetName });
+    startHeartbeat();
     const settings = loadSettings();
     settings.savedPin = pin;
     saveSettings(settings);
@@ -199,6 +253,8 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     }
     return { success: true };
   } catch (err) {
+    // No meetId yet (connection failed), so skip the Firestore error write —
+    // just log it locally.
     log(`❌ PIN lookup failed: ${err.message}`, 'error');
     return { success: false, error: err.message };
   }
@@ -271,5 +327,26 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (watcher) watcher.close();
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  app.quit();
+});
+
+// On quit, mark the agent disconnected on the meet doc so the monitor sees it
+// go offline cleanly. Defer the actual quit until the async write finishes.
+let writingDisconnect = false;
+app.on("before-quit", async (event) => {
+  if (writingDisconnect || !meetId) return;
+  writingDisconnect = true;
+  event.preventDefault();
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  try {
+    await updateDoc(doc(db, "meets", meetId), {
+      agentStatus: "disconnected",
+      agentDisconnectedAt: serverTimestamp(),
+      agentLastSeen: serverTimestamp(),
+    });
+  } catch (err) {
+    log(`❌ Could not write disconnect: ${err.message}`, "error");
+  }
   app.quit();
 });
