@@ -1,6 +1,6 @@
 {
   "name": "dqsync-agent",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "DQSync Agent — automatic heat advancement from Meet Maestro",
   "author": "Stroke & Turn",
   "main": "src/main.js",
@@ -34,7 +34,8 @@
       "deleteAppDataOnUninstall": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "runAfterFinish": false
+      "runAfterFinish": false,
+      "include": "build/installer.nsh"
     },
     "publish": {
       "provider": "github",

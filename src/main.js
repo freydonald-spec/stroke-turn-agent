@@ -429,7 +429,15 @@ app.whenReady().then(async () => {
       buttons: ["Restart Now", "Later"],
       defaultId: 0,
     }).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall();
+      if (response === 0) {
+        // Exit immediately so the new installer doesn't see us still running
+        // (the before-quit disconnect write would otherwise delay/block the
+        // quit and trigger "app cannot be closed"). The new installer also
+        // force-kills us via customCheckAppRunning as a backstop.
+        writingDisconnect = true;
+        if (tray) { try { tray.destroy(); } catch { /* noop */ } }
+        autoUpdater.quitAndInstall();
+      }
     });
   });
 
@@ -453,6 +461,7 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   if (watcher) watcher.close();
   if (heartbeatTimer) clearInterval(heartbeatTimer);
+  if (tray) { try { tray.destroy(); } catch { /* noop */ } }
   app.quit();
 });
 
