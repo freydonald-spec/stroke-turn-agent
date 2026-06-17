@@ -20,6 +20,7 @@ const {
   where,
   serverTimestamp,
 } = require("firebase/firestore");
+const { getAuth, signInAnonymously } = require("firebase/auth");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ function saveSettings(settings) {
 
 let mainWindow    = null;
 let db            = null;
+let auth          = null;
 let meetId        = null;
 let meetName      = null;
 let lastEvent     = null;
@@ -95,9 +97,23 @@ function initDb() {
   try {
     const firebaseApp = initFirebase(FIREBASE_CONFIG);
     db = getFirestore(firebaseApp);
+    auth = getAuth(firebaseApp);
     return true;
   } catch (err) {
     log(`❌ Firebase init failed: ${err.message}`, "error");
+    return false;
+  }
+}
+
+// Firestore rules require request.auth != null, so sign in anonymously before
+// any read/write. Called once at startup.
+async function initAuth() {
+  try {
+    await signInAnonymously(auth);
+    log("🔐 Signed in anonymously", "success");
+    return true;
+  } catch (err) {
+    log(`❌ Auth failed: ${err.message}`, "error");
     return false;
   }
 }
@@ -232,6 +248,10 @@ function startWatcher(filePath) {
 
 ipcMain.handle('connect-by-pin', async (_event, pin) => {
   try {
+    // Should already be signed in from startup, but make sure before querying.
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
     const q = query(collection(db, 'meets'), where('pin', '==', pin));
     const snap = await getDocs(q);
     if (snap.empty) {
@@ -313,9 +333,12 @@ function createWindow() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
   if (!initDb()) return;
+
+  const authed = await initAuth();
+  if (!authed) return;
 
   // Restore saved watch file path if it still exists on disk
   const settings = loadSettings();
