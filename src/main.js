@@ -377,8 +377,10 @@ app.whenReady().then(async () => {
   });
 
   // ── Auto-update (GitHub Releases via electron-updater) ────────────────────
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // Download + install only on explicit user confirmation, never in the
+  // background. quitAndInstall() fully closes the app before installing.
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   // Check for updates 3 seconds after startup (give app time to load)
   setTimeout(() => {
@@ -387,10 +389,20 @@ app.whenReady().then(async () => {
     });
   }, 3000);
 
-  // Update available — notify in activity log
+  // Update available — prompt the user before downloading
   autoUpdater.on("update-available", (info) => {
-    log(`🔄 Update available: v${info.version} — downloading...`, "warn");
-    sendStatus({ type: "update", msg: `Downloading v${info.version}...` });
+    log(`🔄 Update available: v${info.version}`, "warn");
+    const { dialog } = require("electron");
+    dialog.showMessageBox(mainWindow, {
+      type: "info",
+      title: "Update Available",
+      message: `DQSync Agent v${info.version} is available.`,
+      detail: "Download and install now? The app will restart.",
+      buttons: ["Download & Install", "Later"],
+      defaultId: 0
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.downloadUpdate();
+    });
   });
 
   // No update available
