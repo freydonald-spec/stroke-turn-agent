@@ -78,6 +78,7 @@ let watcher       = null;
 let watchFile     = null;
 let heartbeatTimer = null;
 let simulatorMode = false;
+let priorWatchFile = null; // real timing file watched before simulator mode started
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -329,6 +330,8 @@ ipcMain.handle("get-settings", () => {
 ipcMain.handle("simulator-start", () => {
   const filePath = simulator.startSimulator();
   simulatorMode = true;
+  // Remember the real timing file (if any) so it can be restored on stop.
+  priorWatchFile = loadSettings().watchFile ?? null;
   log(`🎮 Simulator started → ${path.basename(filePath)}`, "success");
   // Begin watching the simulated file immediately (no settings persistence —
   // the file is ephemeral and removed on stop).
@@ -342,6 +345,22 @@ ipcMain.handle("simulator-stop", () => {
   if (watcher) { watcher.close(); watcher = null; }
   watchFile = null;
   log("🛑 Simulator stopped", "warn");
+  // Restore the real timing file that was being watched before simulator mode,
+  // if one existed and still exists on disk.
+  if (priorWatchFile) {
+    const restore = priorWatchFile;
+    priorWatchFile = null;
+    const settings = loadSettings();
+    settings.watchFile = restore;
+    saveSettings(settings);
+    if (fs.existsSync(restore)) {
+      log(`📁 Restored timing file: ${path.basename(restore)}`, "success");
+      startWatcher(restore);
+    } else {
+      watchFile = restore;
+      log(`⚠️ Saved timing file not found: ${path.basename(restore)}`, "warn");
+    }
+  }
   return true;
 });
 
