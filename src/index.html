@@ -233,50 +233,40 @@
 
   <!-- File picker -->
   <div id="file-section" style="display:none">
-    <div class="label">Timing file</div>
+    <div class="label">Timing file<span id="sim-indicator" style="display:none;color:#f59e0b;font-weight:700;margin-left:6px;">SIMULATED</span></div>
     <div id="file-path">No file selected</div>
     <button id="select-btn">Select timing_system_configuration.json</button>
-  </div>
-
-  <!-- Simulator Mode -->
-  <div id="simulator-section" style="margin:16px 24px 0;display:none">
-    <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;margin-bottom:8px;">Simulator</div>
-    <button id="sim-toggle-btn"
-      style="width:100%;padding:10px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-      Simulator Mode
-    </button>
-
-    <div id="sim-panel" style="display:none;margin-top:10px;border:1px solid #1e293b;background:#0f2040;border-radius:12px;padding:14px 16px;">
-      <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;">Simulated heat</div>
-      <div id="sim-state" style="font-size:20px;font-weight:700;color:#00c2e0;margin-top:4px;margin-bottom:12px;">Event 1 · Heat 1</div>
-
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button id="sim-prev-btn" style="flex:1;padding:14px;background:#1e293b;color:#e2e8f0;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">← Prev</button>
-        <button id="sim-next-btn" style="flex:1;padding:14px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">Next →</button>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
-        <span style="font-size:12px;color:#94a3b8;width:96px;flex-shrink:0;">Jump to Event:</span>
-        <input id="sim-event-input" type="number" min="1" inputmode="numeric"
-          style="flex:1;min-width:0;padding:8px;background:#0a1628;border:1px solid #1e293b;border-radius:6px;color:#fff;font-size:13px;outline:none;font-family:inherit;" />
-        <button id="sim-event-go" style="padding:8px 14px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Go</button>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
-        <span style="font-size:12px;color:#94a3b8;width:96px;flex-shrink:0;">Jump to Heat:</span>
-        <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
-          style="flex:1;min-width:0;padding:8px;background:#0a1628;border:1px solid #1e293b;border-radius:6px;color:#fff;font-size:13px;outline:none;font-family:inherit;" />
-        <button id="sim-heat-go" style="padding:8px 14px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Go</button>
-      </div>
-
-      <button id="sim-stop-btn" style="width:100%;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Stop Simulator</button>
-    </div>
   </div>
 
   <!-- Activity log -->
   <div id="log-section" style="display:none">
     <div class="label">Activity</div>
     <div id="log"></div>
+  </div>
+
+  <!-- Simulator Mode — subtle toggle at the very bottom, below all other controls -->
+  <div id="simulator-section" style="margin:0 24px 16px;display:none;flex-shrink:0;">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#475569;font-size:11px;">
+      <input type="checkbox" id="sim-toggle" style="cursor:pointer;margin:0;" />
+      <span>Simulator Mode</span>
+    </label>
+
+    <div id="sim-panel" style="display:none;margin-top:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="sim-state" style="font-family:'Consolas','SF Mono',monospace;font-size:12px;color:#00c2e0;min-width:58px;">E1 · H1</span>
+        <button id="sim-prev-btn" style="padding:4px 10px;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">← Prev</button>
+        <button id="sim-next-btn" style="padding:4px 10px;background:#00c2e0;color:#0a1628;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Next →</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#94a3b8;">
+        <span>Event:</span>
+        <input id="sim-event-input" type="number" min="1" inputmode="numeric"
+          style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+        <span>Heat:</span>
+        <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
+          style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+        <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -400,59 +390,53 @@
       if (filePath) setFilePath(filePath);
     });
 
-    // ── Simulator Mode ────────────────────────────────────────────────────────
+    // ── Simulator Mode (subtle toggle) ────────────────────────────────────────
 
-    const simToggleBtn = document.getElementById('sim-toggle-btn');
+    const simToggle    = document.getElementById('sim-toggle');
     const simPanel     = document.getElementById('sim-panel');
     const simState     = document.getElementById('sim-state');
     const simPrevBtn   = document.getElementById('sim-prev-btn');
     const simNextBtn   = document.getElementById('sim-next-btn');
     const simEventInput = document.getElementById('sim-event-input');
-    const simEventGo   = document.getElementById('sim-event-go');
     const simHeatInput = document.getElementById('sim-heat-input');
-    const simHeatGo    = document.getElementById('sim-heat-go');
-    const simStopBtn   = document.getElementById('sim-stop-btn');
+    const simGoBtn     = document.getElementById('sim-go-btn');
+    const simIndicator = document.getElementById('sim-indicator');
 
     function renderSimState(state) {
       if (state && state.currentEvent != null) {
-        simState.textContent = `Event ${state.currentEvent} · Heat ${state.currentHeat}`;
+        simState.textContent = `E${state.currentEvent} · H${state.currentHeat}`;
       }
     }
 
-    simToggleBtn.addEventListener('click', async () => {
-      await window.agent.startSimulator();
-      renderSimState(await window.agent.simulatorGetState());
-      simPanel.style.display = 'block';
-      simToggleBtn.style.display = 'none';
-      fileSection.style.display = 'none'; // simulator controls the watch file
+    simToggle.addEventListener('change', async () => {
+      if (simToggle.checked) {
+        await window.agent.startSimulator();
+        renderSimState(await window.agent.simulatorGetState());
+        simPanel.style.display = 'block';
+        simIndicator.style.display = 'inline';
+      } else {
+        await window.agent.stopSimulator();
+        simPanel.style.display = 'none';
+        simIndicator.style.display = 'none';
+      }
     });
 
     simNextBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorNext()));
     simPrevBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorPrev()));
 
-    simEventGo.addEventListener('click', async () => {
-      const n = parseInt(simEventInput.value, 10);
-      if (Number.isInteger(n)) {
-        renderSimState(await window.agent.simulatorJumpEvent(n));
-        simEventInput.value = '';
-      }
+    // Single Go: jump to the entered event (if any), then the entered heat (if any).
+    simGoBtn.addEventListener('click', async () => {
+      const e = parseInt(simEventInput.value, 10);
+      const h = parseInt(simHeatInput.value, 10);
+      let state = null;
+      if (Number.isInteger(e)) state = await window.agent.simulatorJumpEvent(e);
+      if (Number.isInteger(h)) state = await window.agent.simulatorJumpHeat(h);
+      if (state) renderSimState(state);
+      simEventInput.value = '';
+      simHeatInput.value = '';
     });
-    simHeatGo.addEventListener('click', async () => {
-      const n = parseInt(simHeatInput.value, 10);
-      if (Number.isInteger(n)) {
-        renderSimState(await window.agent.simulatorJumpHeat(n));
-        simHeatInput.value = '';
-      }
-    });
-    simEventInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simEventGo.click(); });
-    simHeatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simHeatGo.click(); });
-
-    simStopBtn.addEventListener('click', async () => {
-      await window.agent.stopSimulator();
-      simPanel.style.display = 'none';
-      simToggleBtn.style.display = 'block';
-      fileSection.style.display = 'block'; // restore the normal file picker
-    });
+    simEventInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simGoBtn.click(); });
+    simHeatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simGoBtn.click(); });
 
     // ── On load: restore saved settings ──────────────────────────────────────
 
