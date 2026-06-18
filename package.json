@@ -1,6 +1,6 @@
 {
   "name": "dqsync-agent",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "DQSync Agent — automatic heat advancement from Meet Maestro",
   "author": "Stroke & Turn",
   "main": "src/main.js",

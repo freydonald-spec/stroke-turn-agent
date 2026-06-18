@@ -238,6 +238,41 @@
     <button id="select-btn">Select timing_system_configuration.json</button>
   </div>
 
+  <!-- Simulator Mode -->
+  <div id="simulator-section" style="margin:16px 24px 0;display:none">
+    <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;margin-bottom:8px;">Simulator</div>
+    <button id="sim-toggle-btn"
+      style="width:100%;padding:10px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+      Simulator Mode
+    </button>
+
+    <div id="sim-panel" style="display:none;margin-top:10px;border:1px solid #1e293b;background:#0f2040;border-radius:12px;padding:14px 16px;">
+      <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;">Simulated heat</div>
+      <div id="sim-state" style="font-size:20px;font-weight:700;color:#00c2e0;margin-top:4px;margin-bottom:12px;">Event 1 · Heat 1</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button id="sim-prev-btn" style="flex:1;padding:14px;background:#1e293b;color:#e2e8f0;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">← Prev</button>
+        <button id="sim-next-btn" style="flex:1;padding:14px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">Next →</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+        <span style="font-size:12px;color:#94a3b8;width:96px;flex-shrink:0;">Jump to Event:</span>
+        <input id="sim-event-input" type="number" min="1" inputmode="numeric"
+          style="flex:1;min-width:0;padding:8px;background:#0a1628;border:1px solid #1e293b;border-radius:6px;color:#fff;font-size:13px;outline:none;font-family:inherit;" />
+        <button id="sim-event-go" style="padding:8px 14px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Go</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+        <span style="font-size:12px;color:#94a3b8;width:96px;flex-shrink:0;">Jump to Heat:</span>
+        <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
+          style="flex:1;min-width:0;padding:8px;background:#0a1628;border:1px solid #1e293b;border-radius:6px;color:#fff;font-size:13px;outline:none;font-family:inherit;" />
+        <button id="sim-heat-go" style="padding:8px 14px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Go</button>
+      </div>
+
+      <button id="sim-stop-btn" style="width:100%;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Stop Simulator</button>
+    </div>
+  </div>
+
   <!-- Activity log -->
   <div id="log-section" style="display:none">
     <div class="label">Activity</div>
@@ -260,6 +295,7 @@
     const pinError = document.getElementById('pin-error');
     const fileSection = document.getElementById('file-section');
     const logSection = document.getElementById('log-section');
+    const simulatorSection = document.getElementById('simulator-section');
 
     pinBtn.addEventListener('click', async () => {
       const pin = pinInput.value.trim().toUpperCase();
@@ -272,6 +308,7 @@
         pinSection.style.display = 'none';
         statusCard.style.display = 'flex';
         fileSection.style.display = 'block';
+        simulatorSection.style.display = 'block';
         logSection.style.display = 'flex';
       } else {
         pinError.textContent = result.error;
@@ -361,6 +398,60 @@
     selectBtn.addEventListener("click", async () => {
       const filePath = await window.agent.selectFile();
       if (filePath) setFilePath(filePath);
+    });
+
+    // ── Simulator Mode ────────────────────────────────────────────────────────
+
+    const simToggleBtn = document.getElementById('sim-toggle-btn');
+    const simPanel     = document.getElementById('sim-panel');
+    const simState     = document.getElementById('sim-state');
+    const simPrevBtn   = document.getElementById('sim-prev-btn');
+    const simNextBtn   = document.getElementById('sim-next-btn');
+    const simEventInput = document.getElementById('sim-event-input');
+    const simEventGo   = document.getElementById('sim-event-go');
+    const simHeatInput = document.getElementById('sim-heat-input');
+    const simHeatGo    = document.getElementById('sim-heat-go');
+    const simStopBtn   = document.getElementById('sim-stop-btn');
+
+    function renderSimState(state) {
+      if (state && state.currentEvent != null) {
+        simState.textContent = `Event ${state.currentEvent} · Heat ${state.currentHeat}`;
+      }
+    }
+
+    simToggleBtn.addEventListener('click', async () => {
+      await window.agent.startSimulator();
+      renderSimState(await window.agent.simulatorGetState());
+      simPanel.style.display = 'block';
+      simToggleBtn.style.display = 'none';
+      fileSection.style.display = 'none'; // simulator controls the watch file
+    });
+
+    simNextBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorNext()));
+    simPrevBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorPrev()));
+
+    simEventGo.addEventListener('click', async () => {
+      const n = parseInt(simEventInput.value, 10);
+      if (Number.isInteger(n)) {
+        renderSimState(await window.agent.simulatorJumpEvent(n));
+        simEventInput.value = '';
+      }
+    });
+    simHeatGo.addEventListener('click', async () => {
+      const n = parseInt(simHeatInput.value, 10);
+      if (Number.isInteger(n)) {
+        renderSimState(await window.agent.simulatorJumpHeat(n));
+        simHeatInput.value = '';
+      }
+    });
+    simEventInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simEventGo.click(); });
+    simHeatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simHeatGo.click(); });
+
+    simStopBtn.addEventListener('click', async () => {
+      await window.agent.stopSimulator();
+      simPanel.style.display = 'none';
+      simToggleBtn.style.display = 'block';
+      fileSection.style.display = 'block'; // restore the normal file picker
     });
 
     // ── On load: restore saved settings ──────────────────────────────────────

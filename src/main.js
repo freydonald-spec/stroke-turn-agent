@@ -23,6 +23,7 @@ const {
 } = require("firebase/firestore");
 const { getAuth, signInAnonymously } = require("firebase/auth");
 const { autoUpdater } = require("electron-updater");
+const simulator = require("./simulator");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ let debounceTimer = null;
 let watcher       = null;
 let watchFile     = null;
 let heartbeatTimer = null;
+let simulatorMode = false;
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -318,6 +320,36 @@ ipcMain.handle("select-file", async () => {
 ipcMain.handle("get-settings", () => {
   return loadSettings();
 });
+
+// ── Simulator Mode ──────────────────────────────────────────────────────────────
+// Drives src/simulator.js, which writes a fake timing_system_configuration.json
+// into userData. Starting the simulator points the watcher at that file so the
+// normal change → push pipeline runs exactly as it would with Meet Maestro.
+
+ipcMain.handle("simulator-start", () => {
+  const filePath = simulator.startSimulator();
+  simulatorMode = true;
+  log(`🎮 Simulator started → ${path.basename(filePath)}`, "success");
+  // Begin watching the simulated file immediately (no settings persistence —
+  // the file is ephemeral and removed on stop).
+  startWatcher(filePath);
+  return filePath;
+});
+
+ipcMain.handle("simulator-stop", () => {
+  simulator.stopSimulator();
+  simulatorMode = false;
+  if (watcher) { watcher.close(); watcher = null; }
+  watchFile = null;
+  log("🛑 Simulator stopped", "warn");
+  return true;
+});
+
+ipcMain.handle("simulator-next", () => simulator.nextHeat());
+ipcMain.handle("simulator-prev", () => simulator.prevHeat());
+ipcMain.handle("simulator-jump-event", (_event, n) => simulator.jumpEvent(n));
+ipcMain.handle("simulator-jump-heat", (_event, n) => simulator.jumpHeat(n));
+ipcMain.handle("simulator-get-state", () => simulator.getState());
 
 // ── Window ────────────────────────────────────────────────────────────────────
 

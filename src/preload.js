@@ -16,6 +16,15 @@ contextBridge.exposeInMainWorld("agent", {
   // Connect to a meet by PIN
   connectByPin: (pin) => ipcRenderer.invoke("connect-by-pin", pin),
 
+  // Simulator Mode controls
+  startSimulator: () => ipcRenderer.invoke("simulator-start"),
+  stopSimulator: () => ipcRenderer.invoke("simulator-stop"),
+  simulatorNext: () => ipcRenderer.invoke("simulator-next"),
+  simulatorPrev: () => ipcRenderer.invoke("simulator-prev"),
+  simulatorJumpEvent: (n) => ipcRenderer.invoke("simulator-jump-event", n),
+  simulatorJumpHeat: (n) => ipcRenderer.invoke("simulator-jump-heat", n),
+  simulatorGetState: () => ipcRenderer.invoke("simulator-get-state"),
+
   // Listen for log messages from main process
   onLog: (callback) => ipcRenderer.on("log", (_event, data) => callback(data)),
 
