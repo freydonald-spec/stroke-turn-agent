@@ -344,7 +344,11 @@ const { Tray, Menu, nativeImage } = require("electron");
 let tray = null;
 
 function createTray() {
-  tray = new Tray(nativeImage.createEmpty());
+  const iconPath = path.join(__dirname, '..', 'build', 'icon.ico');
+  const trayIcon = require('fs').existsSync(iconPath)
+    ? nativeImage.createFromPath(iconPath)
+    : nativeImage.createEmpty();
+  tray = new Tray(trayIcon);
   tray.setToolTip("DQSync Agent v" + app.getVersion());
   const contextMenu = Menu.buildFromTemplate([
     { label: "DQSync Agent v" + app.getVersion(), enabled: false },
