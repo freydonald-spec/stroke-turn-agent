@@ -344,7 +344,7 @@ const { Tray, Menu, nativeImage } = require("electron");
 let tray = null;
 
 function createTray() {
-  const iconPath = path.join(__dirname, '..', 'build', 'icon.ico');
+  const iconPath = path.join(__dirname, '..', 'build', 'tray-icon.png');
   const trayIcon = require('fs').existsSync(iconPath)
     ? nativeImage.createFromPath(iconPath)
     : nativeImage.createEmpty();

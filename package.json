@@ -1,12 +1,13 @@
 {
   "name": "dqsync-agent",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "DQSync Agent — automatic heat advancement from Meet Maestro",
   "author": "Stroke & Turn",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --x64",
+    "generate-tray-icon": "node scripts/generate-tray-icon.js",
+    "build": "npm run generate-tray-icon && electron-builder --win --x64",
     "build-mac": "electron-builder --mac"
   },
   "dependencies": {
