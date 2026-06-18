@@ -1,8 +1,12 @@
 /**
  * generate-tray-icon.js
  *
- * Creates build/tray-icon.png — a 32x32 PNG used for the Windows system tray
+ * Creates src/tray-icon.png — a 32x32 PNG used for the Windows system tray
  * icon (the .ico renders blank in the tray, a sized PNG does not).
+ *
+ * Written into src/ (not build/) because electron-builder's default
+ * buildResources directory (build/) is NOT packaged into the app — anything
+ * there is missing at runtime, leaving the tray blank.
  *
  * Resizes ../stroke-and-turn/public/icon-512.png down to 32x32 using a simple
  * box-average filter. Pure Node (pngjs only) so it runs with `node`:
@@ -15,7 +19,7 @@ const path = require("path");
 const { PNG } = require("pngjs");
 
 const SRC = path.join(__dirname, "..", "..", "stroke-and-turn", "public", "icon-512.png");
-const OUT = path.join(__dirname, "..", "build", "tray-icon.png");
+const OUT = path.join(__dirname, "..", "src", "tray-icon.png");
 const SIZE = 32;
 
 function boxResize(src, size) {
