@@ -482,9 +482,9 @@
 
           <div class="wiz-pin-card">
             <div class="pin-info">
-              <div class="pin-label">Official PIN</div>
+              <div class="pin-label">Officials PIN</div>
               <div class="pin-value" id="wiz-pin-official">----</div>
-              <div class="pin-roles">S&amp;T · Chief Judge · Referee · Starter</div>
+              <div class="pin-roles">S&amp;T · Chief Judge · Referee · Starter · join at /join</div>
             </div>
             <img class="wiz-qr" id="wiz-qr-official" alt="" />
           </div>
@@ -493,7 +493,7 @@
             <div class="pin-info">
               <div class="pin-label">Admin PIN</div>
               <div class="pin-value" id="wiz-pin-admin">------</div>
-              <div class="pin-roles">Scorekeeper · Admin tools — do not share with judges</div>
+              <div class="pin-roles">Scorekeeper / Admin · join at /join, then enter this at the admin prompt — do not share with judges</div>
             </div>
             <img class="wiz-qr" id="wiz-qr-admin" alt="" />
           </div>
@@ -502,7 +502,7 @@
             <div class="pin-info">
               <div class="pin-label">Coach Word</div>
               <div class="pin-value" id="wiz-pin-coach">—</div>
-              <div class="pin-roles">Coaches — read-only DQ view</div>
+              <div class="pin-roles">Coaches — read-only DQ view · join at /coach</div>
             </div>
             <img class="wiz-qr" id="wiz-qr-coach" alt="" />
           </div>
@@ -893,10 +893,11 @@
       if (!r) return;
       const text =
         `${r.meetName}\n\n` +
-        `Official PIN: ${r.pin}  (S&T, Chief Judge, Referee, Starter)\n` +
+        `Officials PIN: ${r.pin}  (S&T, Chief Judge, Referee, Starter)\n` +
         `Admin PIN: ${r.adminPin}  (Scorekeeper / Admin — do not share with judges)\n` +
         `Coach Word: ${r.coachWord}  (Coaches — read-only)\n\n` +
-        `Join at https://dqsync.app/join`;
+        `Officials & scorekeepers join at https://dqsync.app/join\n` +
+        `Coaches join at https://dqsync.app/coach`;
       let ok = await window.agent.copyToClipboard(text);
       if (!ok) {
         try { await navigator.clipboard.writeText(text); ok = true; } catch { /* ignore */ }

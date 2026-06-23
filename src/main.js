@@ -475,13 +475,13 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
     if (wizardTimingFile) settings.watchFile = wizardTimingFile;
     saveSettings(settings);
 
-    // Build QR codes pointing at the public join URL for each credential.
-    const joinUrl = (pin) => `https://dqsync.app/join?pin=${encodeURIComponent(pin)}`;
+    // Build QR codes pointing at the correct public route for each credential:
+    // officials + admin/scorekeeper → /join, coaches → /coach (see wizard.js).
     const qrOpts = { margin: 1, width: 220, color: { dark: "#0a1628", light: "#ffffff" } };
     const [officialQr, adminQr, coachQr] = await Promise.all([
-      QRCode.toDataURL(joinUrl(created.pin), qrOpts),
-      QRCode.toDataURL(joinUrl(created.adminPin), qrOpts),
-      QRCode.toDataURL(joinUrl(created.coachWord), qrOpts),
+      QRCode.toDataURL(wizard.buildJoinUrl(created.pin), qrOpts),
+      QRCode.toDataURL(wizard.buildJoinUrl(created.adminPin), qrOpts),
+      QRCode.toDataURL(wizard.buildCoachUrl(created.coachWord), qrOpts),
     ]);
 
     return {

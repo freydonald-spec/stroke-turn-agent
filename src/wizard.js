@@ -63,6 +63,23 @@ function generateCoachWord() {
   return `${animal}${swim}`;
 }
 
+// ── Public join URLs for the Done/PINs QR codes ──────────────────────────────
+// Centralised so the routes stay correct in one place.
+//   - Officials (S&T/CJ/Referee/Starter) join at /join with the 4-digit pin.
+//   - Scorekeeper/Admin also join at /join: the join page strips ?pin= to 4
+//     digits, so handing it the 6-digit admin PIN prefills the officials pin,
+//     and the scorekeeper then enters the full admin PIN at the admin gate.
+//   - Coaches use the separate /coach route, which matches on coachWord.
+const PUBLIC_BASE = "https://dqsync.app";
+
+function buildJoinUrl(pin) {
+  return `${PUBLIC_BASE}/join?pin=${encodeURIComponent(pin)}`;
+}
+
+function buildCoachUrl(word) {
+  return `${PUBLIC_BASE}/coach?word=${encodeURIComponent(word)}`;
+}
+
 // ── meet_details.json parsing (mirror of parseTimeDrops in import/page.tsx) ───
 
 // Relay swimmer names can appear under several field names / shapes.
@@ -370,6 +387,8 @@ module.exports = {
   parseTimingConfig,
   readJsonFile,
   createMeet,
+  buildJoinUrl,
+  buildCoachUrl,
   // exported for potential reuse / testing
   deriveHostAbbreviation,
   generatePin,
