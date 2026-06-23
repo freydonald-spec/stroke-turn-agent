@@ -3,14 +3,13 @@
  *
  * Parses the two Meet Maestro / Time Drops exports (meet_details.json and
  * timing_system_configuration.json) and writes a complete meet to Firestore —
- * meet doc, events, heats, config/activeMeet, and generated PINs — replicating
- * exactly what the web app's create + import flow produces so every existing
- * role page keeps working unchanged.
+ * meet doc, events, heats, and generated PINs — replicating exactly what the
+ * web app's create + import flow produces so every existing role page keeps
+ * working unchanged.
  *
  * The Firestore document shapes here mirror:
  *   - app/referee/create/page.tsx   (meet doc + PIN/coachWord/adminPin)
  *   - app/referee/import/page.tsx    (events + heats parse and write)
- *   - lib/setActiveMeet.ts           (config/activeMeet)
  * in the stroke-and-turn web app. Keep them in sync if those change.
  */
 
@@ -19,7 +18,6 @@ const {
   doc,
   collection,
   addDoc,
-  setDoc,
   getDocs,
   updateDoc,
   writeBatch,
@@ -366,17 +364,6 @@ async function createMeet(db, parsed, opts = {}) {
     };
     if (firstEvent && firstEvent.stroke) meetUpdate.currentStroke = firstEvent.stroke;
     await updateDoc(doc(db, "meets", meetId), meetUpdate);
-  }
-
-  // ── 5. config/activeMeet (mirror of lib/setActiveMeet.ts) ──
-  try {
-    await setDoc(doc(db, "config", "activeMeet"), {
-      meetId,
-      meetName: meetData.name,
-      updatedAt: serverTimestamp(),
-    });
-  } catch {
-    // Non-fatal — the meet still exists and can be reached by PIN.
   }
 
   return { meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType };
