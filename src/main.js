@@ -276,6 +276,31 @@ function startWatcher(filePath) {
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 
+// Build the credential summary + QR codes the connected (Screen 2 / Admin)
+// views render. QR generation is best-effort — a missing credential just omits
+// that code. Officials + Admin join at /join, coaches at /coach (see wizard.js).
+async function buildMeetInfo(data) {
+  const pin       = data.pin ?? null;
+  const adminPin  = data.adminPin ?? null;
+  const coachWord = data.coachWord ?? null;
+  const name      = data.name ?? data.meetName ?? "Unnamed Meet";
+  const qrOpts = { margin: 1, width: 220, color: { dark: "#0a1628", light: "#ffffff" } };
+  const qr = {};
+  try {
+    if (pin)       qr.official = await QRCode.toDataURL(wizard.buildJoinUrl(pin), qrOpts);
+    if (adminPin)  qr.admin    = await QRCode.toDataURL(wizard.buildJoinUrl(adminPin), qrOpts);
+    if (coachWord) qr.coach    = await QRCode.toDataURL(wizard.buildCoachUrl(coachWord), qrOpts);
+  } catch (err) {
+    log(`⚠️ Could not generate QR codes: ${err.message}`, "warn");
+  }
+  return {
+    meetName: name, pin, adminPin, coachWord, qr,
+    currentEvent:  data.currentEvent  ?? null,
+    currentHeat:   data.currentHeat   ?? null,
+    currentStroke: data.currentStroke ?? null,
+  };
+}
+
 ipcMain.handle('connect-by-pin', async (_event, pin) => {
   try {
     // Should already be signed in from startup, but make sure before querying.
@@ -289,7 +314,8 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     }
     const meetDoc = snap.docs[0];
     meetId = meetDoc.id;
-    meetName = meetDoc.data().name ?? meetDoc.data().meetName ?? "Unnamed Meet";
+    const data = meetDoc.data();
+    meetName = data.name ?? data.meetName ?? "Unnamed Meet";
     lastEvent = null;
     lastHeat = null;
     log(`✅ Connected to: ${meetName}`, 'success');
@@ -301,11 +327,77 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     if (watchFile && fs.existsSync(watchFile)) {
       startWatcher(watchFile);
     }
-    return { success: true };
+    const info = await buildMeetInfo(data);
+    return { success: true, info };
   } catch (err) {
     // No meetId yet (connection failed), so skip the Firestore error write —
     // just log it locally.
     log(`❌ PIN lookup failed: ${err.message}`, 'error');
+    return { success: false, error: err.message };
+  }
+});
+
+// Current connected meet's credentials + QR (used on entering Screen 2 after the
+// wizard, and to refresh the QR overlay).
+ipcMain.handle('get-meet-info', async () => {
+  if (!meetId) return { success: false };
+  try {
+    const snap = await getDoc(doc(db, 'meets', meetId));
+    if (!snap.exists()) return { success: false };
+    return { success: true, info: await buildMeetInfo(snap.data()) };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Update meet file": pick a new meet_details.json and re-import events
+// + heats ONLY for the current meet. Meet doc (PINs/mode) and dqs are preserved.
+ipcMain.handle('update-meet-file', async () => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select updated meet_details.json",
+    filters: [{ name: "JSON Files", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+  try {
+    const json = wizard.readJsonFile(result.filePaths[0]);
+    const parsed = wizard.parseMeetDetails(json);
+    const r = await wizard.reimportEventsAndHeats(db, meetId, parsed);
+    log(`♻️ Updated meet file — ${r.eventCount} events · ${r.heatCount} heats re-imported`, "success");
+    return { success: true, eventCount: r.eventCount, heatCount: r.heatCount };
+  } catch (err) {
+    log(`❌ Update meet file failed: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Disconnect meet": stop the watcher + heartbeat and clear local state.
+// The meet stays intact in Firestore; the agent returns to the launch screen.
+ipcMain.handle('disconnect-meet', async () => {
+  try {
+    if (watcher) { watcher.close(); watcher = null; }
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (meetId) {
+      try {
+        await updateDoc(doc(db, "meets", meetId), {
+          agentStatus: "disconnected",
+          agentDisconnectedAt: serverTimestamp(),
+          agentLastSeen: serverTimestamp(),
+        });
+      } catch { /* best effort — meet stays intact regardless */ }
+    }
+    log("🔌 Disconnected from meet", "warn");
+    meetId = null;
+    meetName = null;
+    lastEvent = null;
+    lastHeat = null;
+    // Forget the saved PIN so a relaunch starts fresh on the launch screen.
+    const settings = loadSettings();
+    delete settings.savedPin;
+    saveSettings(settings);
+    return { success: true };
+  } catch (err) {
     return { success: false, error: err.message };
   }
 });

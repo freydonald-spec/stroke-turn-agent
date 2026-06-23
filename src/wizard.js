@@ -382,11 +382,50 @@ async function createMeet(db, parsed, opts = {}) {
   return { meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType };
 }
 
+/**
+ * Re-import events + heats ONLY for an existing meet (Admin → "Update meet
+ * file"). Replaces the events and heats subcollections wholesale — old docs are
+ * deleted first so a shortened schedule doesn't leave stragglers — but the meet
+ * doc (PINs, meetMode, hostTeamName, currentEvent…) and the dqs collection are
+ * left completely untouched.
+ *
+ * @returns { eventCount, heatCount }
+ */
+async function reimportEventsAndHeats(db, meetId, parsed) {
+  // 1. Delete every existing doc in events + heats.
+  for (const sub of ["events", "heats"]) {
+    const snap = await getDocs(collection(db, "meets", meetId, sub));
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+      const batch = writeBatch(db);
+      for (const d of docs.slice(i, i + 450)) batch.delete(d.ref);
+      await batch.commit();
+    }
+  }
+
+  // 2. Write the freshly parsed events + heats (same doc ids + shapes as createMeet).
+  await commitBatches(
+    db,
+    parsed.events,
+    (e) => doc(db, "meets", meetId, "events", String(e.eventNumber)),
+    (e) => ({ eventNumber: e.eventNumber, eventLabel: e.eventLabel, stroke: e.stroke }),
+  );
+  await commitBatches(
+    db,
+    parsed.heats,
+    (h) => doc(db, "meets", meetId, "heats", `${String(h.eventNumber)}_${String(h.heatNumber)}`),
+    (h) => ({ eventNumber: h.eventNumber, heatNumber: h.heatNumber, lanes: h.lanes }),
+  );
+
+  return { eventCount: parsed.events.length, heatCount: parsed.heats.length };
+}
+
 module.exports = {
   parseMeetDetails,
   parseTimingConfig,
   readJsonFile,
   createMeet,
+  reimportEventsAndHeats,
   buildJoinUrl,
   buildCoachUrl,
   // exported for potential reuse / testing

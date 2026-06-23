@@ -18,181 +18,189 @@
       user-select: none;
     }
 
-    /* ── Header ── */
-    header {
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid #1e293b;
-    }
-    header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.3px;
-    }
-    header p {
-      font-size: 12px;
-      color: #64748b;
-      margin-top: 2px;
+    /* ── Screens ── */
+    .screen { display: none; flex: 1; min-height: 0; flex-direction: column; overflow-y: auto; }
+    .screen.active { display: flex; }
+    .scr-pad { padding: 22px 24px 24px; }
+
+    /* ── Headings ── */
+    .scr-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .scr-sub   { font-size: 12px; color: #64748b; margin-top: 3px; }
+    .label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #64748b; font-weight: 600;
     }
 
-    /* ── Status card ── */
-    #status-card {
-      margin: 16px 24px;
-      border-radius: 12px;
-      border: 1px solid #1e293b;
-      background: #0f2040;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: border-color 0.3s;
+    /* ── Buttons ── */
+    .btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+      font-family: inherit;
     }
-    #status-card.connected   { border-color: #00c2e0; }
-    #status-card.error       { border-color: #ef4444; }
-    #status-card.waiting     { border-color: #f59e0b; }
+    .btn-primary { background: #00c2e0; color: #0a1628; }
+    .btn-primary:hover { background: #00d4f5; }
+    .btn-primary:disabled { background: #16233f; color: #475569; cursor: not-allowed; }
+    .btn-secondary {
+      background: transparent; color: #00c2e0; border: 1px solid #1e3a5f; font-weight: 700;
+    }
+    .btn-secondary:hover { border-color: #00c2e0; }
+    .btn-ghost {
+      background: transparent; color: #94a3b8; border: 1px solid #334155; font-weight: 600;
+    }
+    .btn-ghost:hover { border-color: #64748b; color: #e2e8f0; }
+    .btn-danger {
+      background: transparent; color: #f87171; border: 1px solid rgba(239,68,68,0.35); font-weight: 700;
+    }
+    .btn-danger:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #475569;
-      flex-shrink: 0;
-      transition: background 0.3s;
+    .divider {
+      display: flex; align-items: center; gap: 10px; margin: 18px 0;
     }
-    .status-dot.connected { background: #00c2e0; box-shadow: 0 0 6px #00c2e0; }
-    .status-dot.waiting   { background: #f59e0b; }
-    .status-dot.error     { background: #ef4444; }
-    .status-dot.pulse {
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
+    .divider .ln { flex: 1; height: 1px; background: #1e293b; }
+    .divider .tx { font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; }
 
-    .status-text { flex: 1; min-width: 0; }
-    .status-text .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #64748b;
-      font-weight: 600;
+    /* ── PIN boxes (launch) ── */
+    #pin-boxes { display: flex; gap: 10px; justify-content: center; margin: 12px 0 18px; }
+    .pin-box {
+      width: 56px; height: 64px;
+      background: #0f2040; border: 1.5px solid #1e293b; border-radius: 10px;
+      color: #fff; font-size: 28px; font-weight: 700; text-align: center;
+      outline: none; font-family: inherit; transition: all 0.15s;
     }
-    .status-text .value {
-      font-size: 14px;
-      font-weight: 600;
-      color: #fff;
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .pin-box:focus { border-color: #00c2e0; }
+    .pin-box.filled { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #00c2e0; }
+    #pin-error { color: #f87171; font-size: 12px; margin-top: 10px; text-align: center; display: none; }
 
-    /* ── Current heat display ── */
-    #heat-display {
-      margin: 0 24px;
-      border-radius: 12px;
-      border: 1px solid #1e293b;
-      background: #0f2040;
-      padding: 14px 16px;
-      display: none;
+    /* ── Connected card (main) ── */
+    .conn-card {
+      border: 1px solid #00c2e0; background: #0f1e35; border-radius: 14px;
+      padding: 16px; position: relative;
     }
-    #heat-display.visible { display: block; }
-    #heat-display .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #64748b;
-      font-weight: 600;
+    .conn-top { display: flex; align-items: center; gap: 8px; }
+    .conn-dot { width: 9px; height: 9px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; }
+    .conn-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #34d399; }
+    .conn-sim { font-size: 10px; font-weight: 700; color: #f59e0b; margin-left: 4px; display: none; }
+    .qr-btn {
+      position: absolute; top: 12px; right: 12px;
+      width: 34px; height: 34px; border-radius: 8px;
+      background: rgba(0,194,224,0.1); border: 1px solid rgba(0,194,224,0.3);
+      color: #00c2e0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
     }
-    #heat-display .heat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #00c2e0;
-      margin-top: 4px;
+    .qr-btn:hover { background: rgba(0,194,224,0.2); border-color: #00c2e0; }
+    .conn-meet { font-size: 19px; font-weight: 700; color: #fff; margin-top: 12px; line-height: 1.25; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .pill {
+      display: inline-flex; align-items: baseline; gap: 5px;
+      background: rgba(0,194,224,0.1); border: 1px solid rgba(0,194,224,0.3);
+      border-radius: 999px; padding: 4px 11px;
+      font-size: 12px; color: #cbd5e1;
     }
+    .pill .pk { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #00c2e0; }
+    .pill .pv { font-family: "Consolas","SF Mono",monospace; font-weight: 700; color: #fff; }
 
-    /* ── File picker ── */
-    #file-section {
-      margin: 16px 24px 0;
+    /* ── Heat card (main) ── */
+    .heat-card {
+      border: 1px solid #1e293b; background: #0f1e35; border-radius: 14px;
+      padding: 14px 16px; margin-top: 14px;
     }
-    #file-section .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #64748b;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    #file-path {
-      font-size: 12px;
-      color: #94a3b8;
-      background: #0f2040;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin-bottom: 8px;
-      min-height: 36px;
-      display: flex;
-      align-items: center;
-      word-break: break-all;
-    }
-    #file-path.has-file { color: #e2e8f0; border-color: #334155; }
+    .heat-card .now-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 600; }
+    .heat-card .now-value { font-size: 22px; font-weight: 800; color: #00c2e0; margin-top: 5px; }
 
-    #select-btn {
-      width: 100%;
-      padding: 10px;
-      background: #00c2e0;
-      color: #0a1628;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
+    /* ── Activity (main) ── */
+    .act-section { margin-top: 4px; }
+    .act-header {
+      display: flex; align-items: center; gap: 9px; cursor: pointer;
+      padding: 4px 0;
     }
-    #select-btn:hover { background: #00d4f5; }
-    #select-btn.has-file {
-      background: transparent;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      font-weight: 500;
+    .act-dot { width: 9px; height: 9px; border-radius: 50%; background: #475569; flex-shrink: 0; }
+    .act-dot.ok   { background: #34d399; box-shadow: 0 0 5px #34d399; }
+    .act-dot.info { background: #64748b; }
+    .act-dot.warn { background: #fbbf24; }
+    .act-dot.err  { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+    .act-header .label { flex: 1; }
+    .act-chevron { color: #64748b; transition: transform 0.2s; font-size: 12px; }
+    .act-section.open .act-chevron { transform: rotate(180deg); }
+    .act-log {
+      display: none; margin-top: 8px;
+      background: #060e1a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 6px 4px; max-height: 200px; overflow-y: auto;
     }
-    #select-btn.has-file:hover { border-color: #64748b; color: #e2e8f0; }
+    .act-section.open .act-log { display: block; }
+    .act-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 5px 10px; font-size: 11.5px; line-height: 1.45;
+    }
+    .act-row .rdot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; background: #64748b; }
+    .act-row .rdot.ok { background: #34d399; }
+    .act-row .rdot.info { background: #64748b; }
+    .act-row .rdot.warn { background: #fbbf24; }
+    .act-row .rdot.err { background: #ef4444; }
+    .act-row .rtime { color: #334155; font-family: "Consolas","SF Mono",monospace; font-size: 10px; margin-top: 1px; flex-shrink: 0; }
+    .act-row .rmsg { color: #94a3b8; word-break: break-word; }
 
-    /* ── Log ── */
-    #log-section {
-      flex: 1;
-      margin: 16px 24px 20px;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
+    /* ── Simulator toggle ── */
+    .sim-toggle-row { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #475569; font-size: 11px; }
+    .sim-toggle-row input { cursor: pointer; margin: 0; }
+    #sim-panel { display: none; margin-top: 8px; }
+
+    /* ── Admin rows ── */
+    .admin-card {
+      border: 1px solid #1e293b; background: #0f1e35; border-radius: 14px;
+      padding: 16px; margin-bottom: 18px;
     }
-    #log-section .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #64748b;
-      font-weight: 600;
-      margin-bottom: 8px;
-      flex-shrink: 0;
+    .admin-action {
+      width: 100%; text-align: left; display: flex; align-items: center; gap: 12px;
+      padding: 13px 14px; border-radius: 10px; cursor: pointer;
+      background: #0f1e35; border: 1px solid #1e293b; color: #e2e8f0;
+      font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s;
+      margin-bottom: 10px;
     }
-    #log {
-      flex: 1;
-      background: #060e1a;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 10px 12px;
-      overflow-y: auto;
-      font-family: "Consolas", "SF Mono", monospace;
-      font-size: 11px;
-      line-height: 1.6;
+    .admin-action:hover { border-color: #334155; background: #13233f; }
+    .admin-action.danger { color: #f87171; border-color: rgba(239,68,68,0.25); }
+    .admin-action.danger:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+    .admin-action .ai-ico { color: #00c2e0; display: flex; flex-shrink: 0; }
+    .admin-action.danger .ai-ico { color: #f87171; }
+    .admin-action .ai-text { flex: 1; }
+    .admin-action .ai-sub { font-size: 11px; font-weight: 500; color: #64748b; margin-top: 2px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; color: #00c2e0; font-size: 14px; font-weight: 600;
+      cursor: pointer; padding: 0; margin-bottom: 16px; font-family: inherit;
     }
-    .log-line { color: #64748b; }
-    .log-line.success { color: #34d399; }
-    .log-line.error   { color: #f87171; }
-    .log-line.warn    { color: #fbbf24; }
-    .log-line .time   { color: #334155; margin-right: 6px; }
+    .back-btn:hover { color: #00d4f5; }
+    .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 700; margin: 4px 0 10px; }
+
+    /* ── QR overlay modal ── */
+    #qr-overlay {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(4,8,16,0.82); display: none;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #qr-overlay.visible { display: flex; }
+    .qr-modal {
+      background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 16px;
+      padding: 22px; width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto;
+    }
+    .qr-modal h2 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .qr-modal .qm-sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+    .qr-item {
+      display: flex; align-items: center; gap: 14px;
+      border: 1px solid #1e293b; border-radius: 12px; padding: 12px; margin-bottom: 10px;
+    }
+    .qr-item.admin { border-color: rgba(245,158,11,0.35); }
+    .qr-item.coach { border-color: rgba(52,211,153,0.3); }
+    .qr-item img { width: 92px; height: 92px; border-radius: 8px; background: #fff; flex-shrink: 0; }
+    .qr-item .qi-info { min-width: 0; }
+    .qr-item .qi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #00c2e0; }
+    .qr-item.admin .qi-label { color: #fbbf24; }
+    .qr-item.coach .qi-label { color: #34d399; }
+    .qr-item .qi-value { font-family: "Consolas","SF Mono",monospace; font-size: 22px; font-weight: 700; color: #fff; margin-top: 3px; letter-spacing: 0.08em; }
+    .qr-item.coach .qi-value { font-size: 16px; }
+    .qr-item .qi-role { font-size: 10px; color: #64748b; margin-top: 4px; line-height: 1.3; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── New Meet Wizard ── */
     #wizard {
@@ -305,7 +313,6 @@
       border: 3px solid #1e293b; border-top-color: #00c2e0;
       animation: spin 0.8s linear infinite; margin: 24px auto;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Auto-update overlay ── */
     #update-overlay {
@@ -424,87 +431,195 @@
     <button id="upd-btn" style="display:none;"></button>
   </div>
 
-  <header>
-    <h1>DQSync Agent</h1>
-    <p>Automatic heat advancement for DQSync meets</p>
-    <p id="app-version" style="font-size:11px;color:#334155;margin-top:2px;">v1.0.3</p>
-    <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
-  </header>
+  <!-- ── QR overlay modal ─────────────────────────────────────────────────── -->
+  <div id="qr-overlay">
+    <div class="qr-modal">
+      <h2>Join QR codes</h2>
+      <div class="qm-sub">Officials &amp; scorekeepers scan to /join · coaches to /coach</div>
 
-  <!-- PIN entry -->
-  <div id="pin-section" style="margin: 24px 24px 0;">
-    <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;font-weight:600;margin-bottom:8px;">Meet PIN</div>
-    <input id="pin-input" type="text" maxlength="6" placeholder="Enter PIN"
-      style="width:100%;padding:10px 12px;background:#0f2040;border:1px solid #1e293b;border-radius:8px;color:#fff;font-size:16px;letter-spacing:0.2em;text-align:center;outline:none;margin-bottom:8px;font-family:inherit;" />
-    <button id="pin-btn"
-      style="width:100%;padding:10px;background:#00c2e0;color:#0a1628;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-      Connect to Meet
-    </button>
-    <div id="pin-error" style="color:#f87171;font-size:12px;margin-top:8px;text-align:center;display:none;"></div>
-
-    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;">
-      <div style="flex:1;height:1px;background:#1e293b;"></div>
-      <span style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;">or</span>
-      <div style="flex:1;height:1px;background:#1e293b;"></div>
-    </div>
-    <button id="new-meet-btn"
-      style="width:100%;padding:10px;background:transparent;color:#00c2e0;border:1px solid #1e3a5f;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
-      + Set up a new meet
-    </button>
-    <p style="font-size:11px;color:#475569;margin-top:8px;text-align:center;">
-      Import from Meet Maestro — no web app needed
-    </p>
-  </div>
-
-  <!-- Connection status -->
-  <div id="status-card" style="display:none">
-    <div class="status-dot pulse" id="status-dot"></div>
-    <div class="status-text">
-      <div class="label">Meet</div>
-      <div class="value" id="status-value">Connecting to Firebase…</div>
-    </div>
-  </div>
-
-  <!-- Current heat (shown after first push) -->
-  <div id="heat-display">
-    <div class="label">Last pushed heat</div>
-    <div class="heat-value" id="heat-value">—</div>
-  </div>
-
-  <!-- File picker -->
-  <div id="file-section" style="display:none">
-    <div class="label">Timing file<span id="sim-indicator" style="display:none;color:#f59e0b;font-weight:700;margin-left:6px;">SIMULATED</span></div>
-    <div id="file-path">No file selected</div>
-    <button id="select-btn">Select timing_system_configuration.json</button>
-  </div>
-
-  <!-- Activity log -->
-  <div id="log-section" style="display:none">
-    <div class="label">Activity</div>
-    <div id="log"></div>
-  </div>
-
-  <!-- Simulator Mode — subtle toggle at the very bottom, below all other controls -->
-  <div id="simulator-section" style="margin:0 24px 16px;display:none;flex-shrink:0;">
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#475569;font-size:11px;">
-      <input type="checkbox" id="sim-toggle" style="cursor:pointer;margin:0;" />
-      <span>Simulator Mode</span>
-    </label>
-
-    <div id="sim-panel" style="display:none;margin-top:8px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="sim-state" style="font-family:'Consolas','SF Mono',monospace;font-size:12px;color:#00c2e0;min-width:58px;">E1 · H1</span>
-        <button id="sim-prev-btn" style="padding:4px 10px;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">← Prev</button>
-        <button id="sim-next-btn" style="padding:4px 10px;background:#00c2e0;color:#0a1628;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Next →</button>
+      <div class="qr-item">
+        <img id="qr-img-official" alt="" />
+        <div class="qi-info">
+          <div class="qi-label">Officials PIN</div>
+          <div class="qi-value" id="qr-val-official">----</div>
+          <div class="qi-role">S&amp;T · Chief Judge · Referee · Starter</div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#94a3b8;">
-        <span>Event:</span>
-        <input id="sim-event-input" type="number" min="1" inputmode="numeric"
-          style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
-        <span>Heat:</span>
-        <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
-          style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
-        <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
+
+      <div class="qr-item admin">
+        <img id="qr-img-admin" alt="" />
+        <div class="qi-info">
+          <div class="qi-label">Admin PIN</div>
+          <div class="qi-value" id="qr-val-admin">------</div>
+          <div class="qi-role">Scorekeeper / Admin — do not share with judges</div>
+        </div>
+      </div>
+
+      <div class="qr-item coach">
+        <img id="qr-img-coach" alt="" />
+        <div class="qi-info">
+          <div class="qi-label">Coach Word</div>
+          <div class="qi-value" id="qr-val-coach">—</div>
+          <div class="qi-role">Coaches — read-only DQ view</div>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" id="qr-close" style="margin-top:6px;">Close</button>
+    </div>
+  </div>
+
+  <!-- ════════════ SCREEN 1 — Launch ════════════ -->
+  <div id="screen-launch" class="screen active">
+    <div class="scr-pad">
+      <div class="scr-title">DQSync Agent</div>
+      <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.22</p>
+      <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
+
+      <div style="margin-top:26px;">
+        <div class="label" style="text-align:center;">Enter meet PIN</div>
+        <div id="pin-boxes">
+          <input class="pin-box" inputmode="numeric" maxlength="1" data-i="0" />
+          <input class="pin-box" inputmode="numeric" maxlength="1" data-i="1" />
+          <input class="pin-box" inputmode="numeric" maxlength="1" data-i="2" />
+          <input class="pin-box" inputmode="numeric" maxlength="1" data-i="3" />
+        </div>
+        <button id="connect-btn" class="btn btn-primary" disabled>Connect to meet</button>
+        <div id="pin-error"></div>
+      </div>
+
+      <div class="divider"><span class="ln"></span><span class="tx">or</span><span class="ln"></span></div>
+
+      <button id="new-meet-btn" class="btn btn-secondary">Set up new meet</button>
+      <p style="font-size:11px;color:#475569;margin-top:8px;text-align:center;">
+        Import from Meet Maestro — no web app needed
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════ SCREEN 2 — Main (connected) ════════════ -->
+  <div id="screen-main" class="screen">
+    <div class="scr-pad">
+      <div class="scr-title" style="margin-bottom:16px;">DQSync Agent</div>
+
+      <!-- Connected card -->
+      <div class="conn-card">
+        <div class="conn-top">
+          <span class="conn-dot"></span>
+          <span class="conn-label">Connected</span>
+          <span class="conn-sim" id="conn-sim">· Simulated</span>
+        </div>
+        <button class="qr-btn" id="conn-qr-btn" title="Show QR codes" aria-label="Show QR codes">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="14"/>
+            <line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/>
+            <line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="21" y2="21"/>
+          </svg>
+        </button>
+        <div class="conn-meet" id="conn-meet">Meet</div>
+        <div class="pills" id="conn-pills"></div>
+      </div>
+
+      <!-- Heat card -->
+      <div class="heat-card">
+        <div class="now-label">Now swimming</div>
+        <div class="now-value" id="now-heat">—</div>
+      </div>
+
+      <div class="divider"><span class="ln"></span></div>
+
+      <!-- Admin button -->
+      <button id="admin-btn" class="btn btn-ghost">Admin</button>
+
+      <div class="divider"><span class="ln"></span></div>
+
+      <!-- Activity -->
+      <div class="act-section" id="act-section">
+        <div class="act-header" id="act-header">
+          <span class="act-dot" id="act-dot"></span>
+          <span class="label">Activity</span>
+          <span class="act-chevron">▾</span>
+        </div>
+        <div class="act-log" id="act-log"></div>
+      </div>
+
+      <!-- Simulator -->
+      <div style="margin-top:20px;">
+        <label class="sim-toggle-row">
+          <input type="checkbox" id="sim-toggle" />
+          <span>Simulator Mode</span>
+        </label>
+        <div id="sim-panel">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="sim-state" style="font-family:'Consolas','SF Mono',monospace;font-size:12px;color:#00c2e0;min-width:58px;">E1 · H1</span>
+            <button id="sim-prev-btn" style="padding:4px 10px;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">← Prev</button>
+            <button id="sim-next-btn" style="padding:4px 10px;background:#00c2e0;color:#0a1628;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Next →</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#94a3b8;">
+            <span>Event:</span>
+            <input id="sim-event-input" type="number" min="1" inputmode="numeric"
+              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+            <span>Heat:</span>
+            <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
+              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+            <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ SCREEN 3 — Admin ════════════ -->
+  <div id="screen-admin" class="screen">
+    <div class="scr-pad">
+      <button class="back-btn" id="admin-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <div class="scr-title" style="margin-bottom:16px;">Admin</div>
+
+      <!-- Meet info -->
+      <div class="admin-card">
+        <div class="conn-meet" id="admin-meet" style="margin-top:0;">Meet</div>
+        <div class="pills" id="admin-pills" style="margin-top:12px;"></div>
+        <div id="admin-timing" style="font-size:11px;color:#64748b;margin-top:12px;"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="section-label">Actions</div>
+      <button class="admin-action" id="admin-qr">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/><line x1="21" y1="17" x2="21" y2="21"/></svg>
+        </span>
+        <span class="ai-text">Show QR codes<div class="ai-sub">Officials, Admin &amp; Coach join codes</div></span>
+      </button>
+      <button class="admin-action" id="admin-update-file">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </span>
+        <span class="ai-text">Update meet file<div class="ai-sub">Re-import events &amp; heats — keeps PINs &amp; DQs</div></span>
+      </button>
+      <button class="admin-action" id="admin-change-timing">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </span>
+        <span class="ai-text">Change timing file<div class="ai-sub" id="admin-change-timing-sub">Point the watcher at a new timing file</div></span>
+      </button>
+      <button class="admin-action danger" id="admin-disconnect">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </span>
+        <span class="ai-text">Disconnect meet<div class="ai-sub">Stop watching &amp; return to launch — meet stays intact</div></span>
+      </button>
+
+      <!-- Developer tools -->
+      <div class="section-label" style="margin-top:20px;">Developer tools</div>
+      <div class="admin-card" style="margin-bottom:0;">
+        <label class="sim-toggle-row" style="color:#94a3b8;font-size:13px;">
+          <input type="checkbox" id="sim-toggle-admin" />
+          <span>Simulator Mode</span>
+        </label>
       </div>
     </div>
   </div>
@@ -633,121 +748,214 @@
   </div>
 
   <script>
-    const statusCard  = document.getElementById("status-card");
-    const statusDot   = document.getElementById("status-dot");
-    const statusValue = document.getElementById("status-value");
-    const heatDisplay = document.getElementById("heat-display");
-    const heatValue   = document.getElementById("heat-value");
-    const filePathEl  = document.getElementById("file-path");
-    const selectBtn   = document.getElementById("select-btn");
-    const logEl       = document.getElementById("log");
-
-    const pinSection = document.getElementById('pin-section');
-    const pinInput = document.getElementById('pin-input');
-    const pinBtn = document.getElementById('pin-btn');
-    const pinError = document.getElementById('pin-error');
-    const fileSection = document.getElementById('file-section');
-    const logSection = document.getElementById('log-section');
-    const simulatorSection = document.getElementById('simulator-section');
-
-    pinBtn.addEventListener('click', async () => {
-      const pin = pinInput.value.trim().toUpperCase();
-      if (!pin) return;
-      pinBtn.disabled = true;
-      pinBtn.textContent = 'Connecting…';
-      pinError.style.display = 'none';
-      const result = await window.agent.connectByPin(pin);
-      if (result.success) {
-        pinSection.style.display = 'none';
-        statusCard.style.display = 'flex';
-        fileSection.style.display = 'block';
-        simulatorSection.style.display = 'block';
-        logSection.style.display = 'flex';
-      } else {
-        pinError.textContent = result.error;
-        pinError.style.display = 'block';
-        pinBtn.disabled = false;
-        pinBtn.textContent = 'Connect to Meet';
-      }
-    });
-
-    pinInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') pinBtn.click();
-    });
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    function addLog({ msg, type = "info", time }) {
-      const line = document.createElement("div");
-      line.className = `log-line ${type}`;
-      line.innerHTML = `<span class="time">[${time}]</span>${escapeHtml(msg)}`;
-      logEl.appendChild(line);
-      logEl.scrollTop = logEl.scrollHeight;
+    // ── View state ─────────────────────────────────────────────────────────────
+    const screens = {
+      launch: document.getElementById('screen-launch'),
+      main:   document.getElementById('screen-main'),
+      admin:  document.getElementById('screen-admin'),
+    };
+    function showScreen(name) {
+      Object.entries(screens).forEach(([k, el]) => el.classList.toggle('active', k === name));
     }
 
     function escapeHtml(str) {
-      return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
 
-    function setStatus(type, text) {
-      statusCard.className = type;
-      statusDot.className = `status-dot ${type}`;
-      if (type === "connecting" || type === "waiting") statusDot.classList.add("pulse");
-      statusValue.textContent = text;
+    let currentMeetInfo = null; // { meetName, pin, adminPin, coachWord, qr:{}, currentEvent, ... }
+
+    // ── Launch screen: PIN boxes ────────────────────────────────────────────────
+    const pinBoxes   = Array.from(document.querySelectorAll('.pin-box'));
+    const connectBtn = document.getElementById('connect-btn');
+    const pinError   = document.getElementById('pin-error');
+
+    function pinValue() { return pinBoxes.map((b) => b.value).join(''); }
+    function refreshPinState() {
+      pinBoxes.forEach((b) => b.classList.toggle('filled', b.value !== ''));
+      connectBtn.disabled = pinValue().length !== 4;
+    }
+    function fillPinBoxes(pin) {
+      const digits = String(pin || '').replace(/\D/g, '').slice(0, 4).split('');
+      pinBoxes.forEach((b, i) => { b.value = digits[i] || ''; });
+      refreshPinState();
     }
 
-    function setFilePath(filePath) {
-      if (filePath) {
-        // Show just the filename, not the full path (cleaner UI)
-        const parts = filePath.replace(/\\/g, "/").split("/");
-        filePathEl.textContent = parts[parts.length - 1];
-        filePathEl.title = filePath; // full path on hover
-        filePathEl.classList.add("has-file");
-        selectBtn.textContent = "Change file";
-        selectBtn.classList.add("has-file");
-      }
-    }
+    pinBoxes.forEach((box, i) => {
+      box.addEventListener('input', () => {
+        box.value = box.value.replace(/\D/g, '').slice(0, 1);
+        if (box.value && i < pinBoxes.length - 1) pinBoxes[i + 1].focus();
+        pinError.style.display = 'none';
+        refreshPinState();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && i > 0) pinBoxes[i - 1].focus();
+        if (e.key === 'Enter' && !connectBtn.disabled) connectBtn.click();
+      });
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const txt = (e.clipboardData || window.clipboardData).getData('text');
+        fillPinBoxes(txt);
+        const len = pinValue().length;
+        pinBoxes[Math.min(len, 3)].focus();
+      });
+    });
 
-    // ── Status updates from main process ─────────────────────────────────────
-
-    window.agent.onStatus((data) => {
-      switch (data.type) {
-        case "connecting":
-          setStatus("connecting", "Connecting…");
-          break;
-        case "waiting":
-          setStatus("waiting", "Waiting — open Stroke & Turn as Chief Judge");
-          break;
-        case "connected":
-          setStatus("connected", data.meetName);
-          break;
-        case "error":
-          setStatus("error", `Error: ${data.msg}`);
-          break;
-        case "heat":
-          const strokeLabel = data.stroke ? ` · ${data.stroke}` : "";
-          heatValue.textContent = `Event ${data.event} · Heat ${data.heat}${strokeLabel}`;
-          heatDisplay.classList.add("visible");
-          break;
+    connectBtn.addEventListener('click', async () => {
+      const pin = pinValue();
+      if (pin.length !== 4) return;
+      connectBtn.disabled = true;
+      connectBtn.textContent = 'Connecting…';
+      pinError.style.display = 'none';
+      const result = await window.agent.connectByPin(pin);
+      connectBtn.textContent = 'Connect to meet';
+      if (result && result.success) {
+        enterMeet(result.info);
+      } else {
+        pinError.textContent = (result && result.error) || 'Could not connect.';
+        pinError.style.display = 'block';
+        refreshPinState();
       }
     });
 
-    // ── Log updates from main process ─────────────────────────────────────────
+    // ── Enter the connected (main) screen ───────────────────────────────────────
+    function pillsHtml(info) {
+      const parts = [];
+      if (info.pin)       parts.push(`<span class="pill"><span class="pk">PIN</span><span class="pv">${escapeHtml(info.pin)}</span></span>`);
+      if (info.adminPin)  parts.push(`<span class="pill"><span class="pk">Admin</span><span class="pv">${escapeHtml(info.adminPin)}</span></span>`);
+      if (info.coachWord) parts.push(`<span class="pill"><span class="pk">Coach</span><span class="pv">${escapeHtml(info.coachWord)}</span></span>`);
+      return parts.join('');
+    }
+
+    function enterMeet(info) {
+      if (!info) return;
+      currentMeetInfo = info;
+      document.getElementById('conn-meet').textContent  = info.meetName || 'Meet';
+      document.getElementById('admin-meet').textContent = info.meetName || 'Meet';
+      document.getElementById('conn-pills').innerHTML  = pillsHtml(info);
+      document.getElementById('admin-pills').innerHTML = pillsHtml(info);
+      if (info.currentEvent != null && info.currentHeat != null) {
+        setHeat(info.currentEvent, info.currentHeat, info.currentStroke);
+      }
+      showScreen('main');
+    }
+
+    function setHeat(event, heat, stroke) {
+      const strokeLabel = stroke ? ` · ${stroke}` : '';
+      document.getElementById('now-heat').textContent = `Event ${event} · Heat ${heat}${strokeLabel}`;
+    }
+
+    // ── QR overlay ──────────────────────────────────────────────────────────────
+    const qrOverlay = document.getElementById('qr-overlay');
+    function openQrOverlay() {
+      const info = currentMeetInfo;
+      if (!info) return;
+      document.getElementById('qr-val-official').textContent = info.pin || '—';
+      document.getElementById('qr-val-admin').textContent    = info.adminPin || '—';
+      document.getElementById('qr-val-coach').textContent    = info.coachWord || '—';
+      if (info.qr) {
+        if (info.qr.official) document.getElementById('qr-img-official').src = info.qr.official;
+        if (info.qr.admin)    document.getElementById('qr-img-admin').src    = info.qr.admin;
+        if (info.qr.coach)    document.getElementById('qr-img-coach').src    = info.qr.coach;
+      }
+      qrOverlay.classList.add('visible');
+    }
+    function closeQrOverlay() { qrOverlay.classList.remove('visible'); }
+    document.getElementById('conn-qr-btn').addEventListener('click', openQrOverlay);
+    document.getElementById('admin-qr').addEventListener('click', openQrOverlay);
+    document.getElementById('qr-close').addEventListener('click', closeQrOverlay);
+    qrOverlay.addEventListener('click', (e) => { if (e.target === qrOverlay) closeQrOverlay(); });
+
+    // ── Navigation: Admin ↔ Main ────────────────────────────────────────────────
+    document.getElementById('admin-btn').addEventListener('click', () => showScreen('admin'));
+    document.getElementById('admin-back').addEventListener('click', () => showScreen('main'));
+
+    document.getElementById('admin-update-file').addEventListener('click', async () => {
+      const res = await window.agent.updateMeetFile();
+      if (!res || res.canceled) return;
+      if (res.success) {
+        addLog({ msg: `Meet file updated — ${res.eventCount} events · ${res.heatCount} heats re-imported`, type: 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Update meet file failed: ${res.error || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
+
+    document.getElementById('admin-change-timing').addEventListener('click', async () => {
+      const filePath = await window.agent.selectFile();
+      if (filePath) setTimingFile(filePath);
+    });
+
+    document.getElementById('admin-disconnect').addEventListener('click', async () => {
+      const res = await window.agent.disconnectMeet();
+      if (res && res.success) {
+        currentMeetInfo = null;
+        document.getElementById('now-heat').textContent = '—';
+        fillPinBoxes('');
+        showScreen('launch');
+        pinBoxes[0].focus();
+      }
+    });
+
+    function setTimingFile(filePath) {
+      if (!filePath) return;
+      const parts = filePath.replace(/\\/g, '/').split('/');
+      const name = parts[parts.length - 1];
+      const el = document.getElementById('admin-change-timing-sub');
+      el.textContent = `Watching: ${name}`;
+      el.title = filePath;
+    }
+
+    // ── Activity log ────────────────────────────────────────────────────────────
+    const actSection = document.getElementById('act-section');
+    const actHeader  = document.getElementById('act-header');
+    const actDot     = document.getElementById('act-dot');
+    const actLog     = document.getElementById('act-log');
+    const activityEntries = []; // newest first, capped at 20
+
+    function nowTime() { return new Date().toLocaleTimeString(); }
+
+    // Map a log type to an activity dot class.
+    function dotClass(type) {
+      if (type === 'success') return 'ok';
+      if (type === 'warn')    return 'warn';
+      if (type === 'error')   return 'err';
+      return 'info'; // file change / general info → gray
+    }
+
+    function renderActivity() {
+      actLog.innerHTML = activityEntries.map((e) =>
+        `<div class="act-row">
+           <span class="rdot ${dotClass(e.type)}"></span>
+           <span class="rtime">${escapeHtml(e.time)}</span>
+           <span class="rmsg">${escapeHtml(e.msg)}</span>
+         </div>`).join('');
+    }
+
+    function addLog({ msg, type = 'info', time }) {
+      activityEntries.unshift({ msg, type, time: time || nowTime() });
+      if (activityEntries.length > 20) activityEntries.pop();
+      renderActivity();
+      // Header dot reflects the latest status.
+      actDot.className = `act-dot ${dotClass(type)}`;
+    }
+
+    actHeader.addEventListener('click', () => actSection.classList.toggle('open'));
 
     window.agent.onLog((data) => addLog(data));
 
-    // ── Auto-update status ─────────────────────────────────────────────────────
-
-    window.agent.onUpdate((data) => {
-      const el = document.getElementById('update-status');
-      if (el) {
-        el.textContent = data.msg;
-        el.style.display = 'block';
+    // ── Status updates from main process ─────────────────────────────────────────
+    window.agent.onStatus((data) => {
+      if (data.type === 'heat') {
+        setHeat(data.event, data.heat, data.stroke);
       }
     });
 
-    // ── Full-screen update overlay ─────────────────────────────────────────────
+    // ── Auto-update status line (legacy header text) ─────────────────────────────
+    window.agent.onUpdate((data) => {
+      const el = document.getElementById('update-status');
+      if (el) { el.textContent = data.msg; el.style.display = 'block'; }
+    });
 
+    // ── Full-screen update overlay ───────────────────────────────────────────────
     const updOverlay = document.getElementById('update-overlay');
     const updSpinner = document.getElementById('upd-spinner');
     const updStatus  = document.getElementById('upd-status');
@@ -763,7 +971,7 @@
       updBar.style.display = show ? 'block' : 'none';
       if (typeof percent === 'number') updBarFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
     }
-    function setButton(label, kind, handler) {
+    function setUpdButton(label, kind, handler) {
       if (!label) { updBtn.style.display = 'none'; updBtn.onclick = null; return; }
       updBtn.textContent = label;
       updBtn.className = kind === 'ghost' ? 'ghost' : '';
@@ -777,41 +985,41 @@
         case 'checking':
           showUpdate(); setSpinner(true);
           updStatus.textContent = 'Checking for updates…';
-          setBar(false); updVersion.textContent = ''; setButton(null);
+          setBar(false); updVersion.textContent = ''; setUpdButton(null);
           break;
         case 'available':
           showUpdate(); setSpinner(true);
           updStatus.textContent = `Update available — ${v}`;
-          setBar(false); updVersion.textContent = 'Starting download…'; setButton(null);
+          setBar(false); updVersion.textContent = 'Starting download…'; setUpdButton(null);
           break;
         case 'downloading':
           showUpdate(); setSpinner(false);
           updStatus.textContent = `Downloading update… ${d.percent ?? 0}%`;
-          setBar(true, d.percent ?? 0); updVersion.textContent = ''; setButton(null);
+          setBar(true, d.percent ?? 0); updVersion.textContent = ''; setUpdButton(null);
           break;
         case 'downloaded':
           showUpdate(); setSpinner(true);
           updStatus.textContent = 'Download complete';
-          setBar(true, 100); updVersion.textContent = ''; setButton(null);
+          setBar(true, 100); updVersion.textContent = ''; setUpdButton(null);
           break;
         case 'installing':
           showUpdate(); setSpinner(true);
           updStatus.textContent = 'Installing update…';
-          setBar(false); updVersion.textContent = v ? `Applying ${v}` : ''; setButton(null);
+          setBar(false); updVersion.textContent = v ? `Applying ${v}` : ''; setUpdButton(null);
           break;
         case 'restarting':
           showUpdate(); setSpinner(true);
           updStatus.textContent = 'Restarting…';
-          setBar(false); updVersion.textContent = ''; setButton(null);
+          setBar(false); updVersion.textContent = ''; setUpdButton(null);
           break;
         case 'restart-fallback':
           showUpdate(); setSpinner(false);
           updStatus.textContent = 'Update ready';
           setBar(false);
           updVersion.textContent = 'Almost there — tap to finish installing.';
-          setButton('Restart now', 'primary', () => {
+          setUpdButton('Restart now', 'primary', () => {
             updStatus.textContent = 'Restarting…';
-            setSpinner(true); setButton(null);
+            setSpinner(true); setUpdButton(null);
             window.agent.restartNow();
           });
           break;
@@ -820,7 +1028,7 @@
           updStatus.textContent = 'Update failed';
           setBar(false);
           updVersion.textContent = d.message || 'Could not complete the update.';
-          setButton('Continue without updating', 'ghost', hideUpdate);
+          setUpdButton('Continue without updating', 'ghost', hideUpdate);
           break;
         case 'hide':
         default:
@@ -829,24 +1037,17 @@
       }
     });
 
-    // ── File picker button ────────────────────────────────────────────────────
-
-    selectBtn.addEventListener("click", async () => {
-      const filePath = await window.agent.selectFile();
-      if (filePath) setFilePath(filePath);
-    });
-
-    // ── Simulator Mode (subtle toggle) ────────────────────────────────────────
-
-    const simToggle    = document.getElementById('sim-toggle');
-    const simPanel     = document.getElementById('sim-panel');
-    const simState     = document.getElementById('sim-state');
-    const simPrevBtn   = document.getElementById('sim-prev-btn');
-    const simNextBtn   = document.getElementById('sim-next-btn');
-    const simEventInput = document.getElementById('sim-event-input');
-    const simHeatInput = document.getElementById('sim-heat-input');
-    const simGoBtn     = document.getElementById('sim-go-btn');
-    const simIndicator = document.getElementById('sim-indicator');
+    // ── Simulator Mode (synced across main + admin) ──────────────────────────────
+    const simToggle      = document.getElementById('sim-toggle');
+    const simToggleAdmin = document.getElementById('sim-toggle-admin');
+    const simPanel       = document.getElementById('sim-panel');
+    const simState       = document.getElementById('sim-state');
+    const simPrevBtn     = document.getElementById('sim-prev-btn');
+    const simNextBtn     = document.getElementById('sim-next-btn');
+    const simEventInput  = document.getElementById('sim-event-input');
+    const simHeatInput   = document.getElementById('sim-heat-input');
+    const simGoBtn       = document.getElementById('sim-go-btn');
+    const connSim        = document.getElementById('conn-sim');
 
     function renderSimState(state) {
       if (state && state.currentEvent != null) {
@@ -854,23 +1055,23 @@
       }
     }
 
-    simToggle.addEventListener('change', async () => {
-      if (simToggle.checked) {
+    async function setSimulator(on) {
+      if (on) {
         await window.agent.startSimulator();
         renderSimState(await window.agent.simulatorGetState());
-        simPanel.style.display = 'block';
-        simIndicator.style.display = 'inline';
       } else {
         await window.agent.stopSimulator();
-        simPanel.style.display = 'none';
-        simIndicator.style.display = 'none';
       }
-    });
+      simToggle.checked = on;
+      simToggleAdmin.checked = on;
+      simPanel.style.display = on ? 'block' : 'none';
+      connSim.style.display = on ? 'inline' : 'none';
+    }
 
+    simToggle.addEventListener('change', () => setSimulator(simToggle.checked));
+    simToggleAdmin.addEventListener('change', () => setSimulator(simToggleAdmin.checked));
     simNextBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorNext()));
     simPrevBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorPrev()));
-
-    // Single Go: jump to the entered event (if any), then the entered heat (if any).
     simGoBtn.addEventListener('click', async () => {
       const e = parseInt(simEventInput.value, 10);
       const h = parseInt(simHeatInput.value, 10);
@@ -885,7 +1086,6 @@
     simHeatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simGoBtn.click(); });
 
     // ── New Meet Setup Wizard ─────────────────────────────────────────────────
-
     const wizardEl    = document.getElementById('wizard');
     const newMeetBtn  = document.getElementById('new-meet-btn');
     const wizBack     = document.getElementById('wiz-back');
@@ -896,7 +1096,6 @@
 
     function fmtDate(d) {
       if (!d) return '—';
-      // d is "YYYY-MM-DD"; render as a friendly local date without TZ drift.
       const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
       if (!m) return d;
       const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
@@ -909,13 +1108,8 @@
         .join('');
     }
 
-    function showWizard() {
-      wizardEl.classList.add('visible');
-      gotoStep(1);
-    }
-    function hideWizard() {
-      wizardEl.classList.remove('visible');
-    }
+    function showWizard() { wizardEl.classList.add('visible'); gotoStep(1); }
+    function hideWizard() { wizardEl.classList.remove('visible'); }
 
     function gotoStep(n) {
       wiz.step = n;
@@ -924,7 +1118,6 @@
         d.classList.toggle('active', i + 1 === n);
         d.classList.toggle('done', i + 1 < n);
       });
-      // Back is meaningless once the meet is created (step 5).
       wizBack.style.visibility = n >= 5 ? 'hidden' : 'visible';
       if (n === 3) enterStep3();
       if (n === 4) renderReview();
@@ -937,7 +1130,7 @@
       gotoStep(wiz.step - 1);
     });
 
-    // ── Step 1: meet details ──
+    // Step 1: meet details
     const detailsErr     = document.getElementById('wiz-details-err');
     const detailsSummary = document.getElementById('wiz-details-summary');
     const detailsCard    = document.getElementById('wiz-details-card');
@@ -954,8 +1147,7 @@
       }
       wiz.summary = res.summary;
       const s = res.summary;
-      const visiting = s.visitingTeams && s.visitingTeams.length
-        ? s.visitingTeams.join(', ') : '—';
+      const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
       rows(detailsCard, [
         ['Meet name', s.meetName || '—'],
         ['Date', fmtDate(s.meetStartDate)],
@@ -973,7 +1165,7 @@
     document.getElementById('wiz-details-change').addEventListener('click', pickMeetDetails);
     document.getElementById('wiz-details-next').addEventListener('click', () => gotoStep(2));
 
-    // ── Step 2: timing config ──
+    // Step 2: timing config
     const timingErr     = document.getElementById('wiz-timing-err');
     const timingSummary = document.getElementById('wiz-timing-summary');
     const timingCard    = document.getElementById('wiz-timing-card');
@@ -1005,13 +1197,10 @@
       timingNext.disabled = false;
     });
 
-    document.getElementById('wiz-timing-skip').addEventListener('click', () => {
-      wiz.timing = null;
-      gotoStep(3);
-    });
+    document.getElementById('wiz-timing-skip').addEventListener('click', () => { wiz.timing = null; gotoStep(3); });
     timingNext.addEventListener('click', () => gotoStep(3));
 
-    // ── Step 3: meet type ──
+    // Step 3: meet type
     const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
     const typeNote = document.getElementById('wiz-type-note');
 
@@ -1022,16 +1211,14 @@
     typeBtns.forEach((b) => b.addEventListener('click', () => selectType(b.dataset.type)));
 
     function enterStep3() {
-      // Pre-select the auto-detected type (unless the user already chose one).
       const auto = (wiz.summary && wiz.summary.meetType) || 'dual';
-      if (!wiz.meetType) selectType(auto);
-      else selectType(wiz.meetType);
+      if (!wiz.meetType) selectType(auto); else selectType(wiz.meetType);
       const n = wiz.summary ? wiz.summary.teamCount : 0;
       typeNote.textContent = `Auto-detected based on ${n} team${n === 1 ? '' : 's'} in the heat sheet — tap to override.`;
     }
     document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(4));
 
-    // ── Step 4: review ──
+    // Step 4: review
     function renderReview() {
       const s = wiz.summary || {};
       const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
@@ -1050,7 +1237,7 @@
       ]);
     }
 
-    // ── Step 4 → 5: create ──
+    // Step 4 → 5: create
     const createErrEl = document.getElementById('wiz-create-err');
     const creatingEl  = document.getElementById('wiz-creating');
     const doneEl      = document.getElementById('wiz-done');
@@ -1062,7 +1249,6 @@
       doneEl.style.display = 'none';
       const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual');
       if (!res || !res.success) {
-        // Surface the error on step 4 so the user can retry.
         gotoStep(4);
         createErrEl.textContent = (res && res.error) || 'Could not create the meet.';
         createErrEl.style.display = 'block';
@@ -1084,7 +1270,7 @@
       doneEl.style.display = 'block';
     }
 
-    // ── Step 5: copy PINs + start watching ──
+    // Step 5: copy PINs + start watching
     document.getElementById('wiz-copy-pins').addEventListener('click', async (e) => {
       const r = wiz.created;
       if (!r) return;
@@ -1111,35 +1297,22 @@
       const watchErr = document.getElementById('wiz-watch-err');
       watchErr.style.display = 'none';
       const res = await window.agent.wizardStartWatching();
-      // Reveal the main monitoring UI either way — the meet is already connected.
-      enterConnectedUI();
-      if (wiz.created && wiz.timing && wiz.timing.filePath) {
-        setFilePath(wiz.timing.filePath);
-      }
+      if (wiz.timing && wiz.timing.filePath) setTimingFile(wiz.timing.filePath);
       hideWizard();
+      // The meet is already connected in the main process — pull its full info
+      // (credentials + QR + current heat) and enter the main screen.
+      const info = await window.agent.getMeetInfo();
+      enterMeet(info && info.success ? info.info : (wiz.created || null));
       if (!res || !res.success) {
-        // No timing file was selected — user can pick one from the main screen.
-        addLog({ msg: 'No timing file selected — choose one to begin syncing.', type: 'warn', time: new Date().toLocaleTimeString() });
+        addLog({ msg: 'No timing file selected — choose one from Admin to begin syncing.', type: 'warn', time: nowTime() });
       }
     });
 
-    // Reveal the connected monitoring UI (shared by PIN connect + wizard finish).
-    function enterConnectedUI() {
-      pinSection.style.display = 'none';
-      statusCard.style.display = 'flex';
-      fileSection.style.display = 'block';
-      simulatorSection.style.display = 'block';
-      logSection.style.display = 'flex';
-    }
-
     // ── On load: restore saved settings ──────────────────────────────────────
-
-    // Restore saved PIN on load
     window.agent.getSettings().then((settings) => {
-      if (settings.watchFile) setFilePath(settings.watchFile);
-      if (settings.savedPin) {
-        pinInput.value = settings.savedPin;
-      }
+      if (settings.watchFile) setTimingFile(settings.watchFile);
+      if (settings.savedPin) fillPinBoxes(settings.savedPin);
+      pinBoxes[0].focus();
     });
   </script>
 

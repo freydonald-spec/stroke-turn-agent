@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld("agent", {
   // Connect to a meet by PIN
   connectByPin: (pin) => ipcRenderer.invoke("connect-by-pin", pin),
 
+  // Connected-meet info (credentials + QR), file update, disconnect
+  getMeetInfo: () => ipcRenderer.invoke("get-meet-info"),
+  updateMeetFile: () => ipcRenderer.invoke("update-meet-file"),
+  disconnectMeet: () => ipcRenderer.invoke("disconnect-meet"),
+
   // New Meet Setup Wizard
   wizardSelectMeetDetails: () => ipcRenderer.invoke("wizard-select-meet-details"),
   wizardSelectTimingConfig: () => ipcRenderer.invoke("wizard-select-timing-config"),
