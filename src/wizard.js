@@ -279,51 +279,74 @@ async function commitBatches(db, items, makeRef, makeData) {
   }
 }
 
-// Authorized-teams gate. Mirrors the web app's config/authorizedTeams check
-// (app/referee/import/page.tsx): block a write only when the allowlist doc is
-// present AND non-empty AND none of the meet's teams appear in it. Fail OPEN in
-// every other case — missing/empty allowlist, no teams in the file, or an
-// unreadable doc — so legitimate meets are never blocked by a config glitch.
-// Comparison is case-insensitive. Throws an Error (caught by the IPC handler and
-// shown in the wizard UI) when the meet has no authorized team.
+// Authorized-teams gate. Mirrors the web app's config/authorizedTeams allowlist
+// (see app/monitor/page.tsx for the doc shape: teams is an array of either a
+// legacy plain-string abbreviation, treated as active, or a TeamObject
+// { abbreviation, teamName, status: "active"|"suspended", comp, addedAt }).
+//
+// A meet proceeds only if one of its teams is on the list AND that entry's
+// status is "active" or "comp". A suspended (or any other non-allowed) status is
+// treated like an unauthorized team. We FAIL OPEN in every ambiguous case —
+// missing/empty/unreadable allowlist, or no teams in the file — so legitimate
+// meets are never blocked by a config glitch. Comparison is case-insensitive.
+// Throws an Error (caught by the IPC handler and shown in the wizard UI) when
+// the meet has no authorized team.
 async function assertAuthorizedTeams(db, teams) {
   const importedTeams = (teams || [])
     .map((t) => String(t).trim().toUpperCase())
     .filter(Boolean);
   if (importedTeams.length === 0) return; // nothing to check
 
-  let allowedTeams;
+  let entries; // [{ abbr, status }] — one per allowlist entry
   try {
     const snap = await getDoc(doc(db, "config", "authorizedTeams"));
     if (!snap.exists()) return; // no allowlist → fail open
     const raw = snap.data().teams;
-    // Entries may be plain strings or { abbreviation } objects (legacy + new).
-    allowedTeams = Array.isArray(raw)
-      ? raw
-          .map((t) =>
-            (typeof t === "string"
-              ? t
-              : t && typeof t === "object"
-                ? String(t.abbreviation ?? "")
-                : "")
-              .trim()
-              .toUpperCase())
-          .filter(Boolean)
-      : [];
+    if (!Array.isArray(raw)) return; // unexpected shape → fail open
+    entries = raw
+      .map((t) => {
+        // Legacy plain string → abbreviation only, implicitly active.
+        if (typeof t === "string") {
+          return { abbr: t.trim().toUpperCase(), status: "active" };
+        }
+        if (t && typeof t === "object") {
+          const abbr = String(t.abbreviation ?? "").trim().toUpperCase();
+          // Missing status defaults to active (objects predating the field).
+          const status = String(t.status ?? "active").trim().toLowerCase();
+          return { abbr, status };
+        }
+        return { abbr: "", status: "" };
+      })
+      .filter((e) => e.abbr);
   } catch {
     return; // could not read the allowlist → fail open
   }
 
-  if (allowedTeams.length === 0) return; // empty allowlist → fail open
+  if (entries.length === 0) return; // empty allowlist → fail open
 
-  const anyAuthorized = importedTeams.some((t) => allowedTeams.includes(t));
-  if (!anyAuthorized) {
+  const ALLOWED_STATUSES = new Set(["active", "comp"]);
+  const allowedAbbrs = new Set(
+    entries.filter((e) => ALLOWED_STATUSES.has(e.status)).map((e) => e.abbr),
+  );
+  const presentAbbrs = new Set(entries.map((e) => e.abbr));
+
+  // A matching team with active/comp status authorizes the meet.
+  if (importedTeams.some((t) => allowedAbbrs.has(t))) return;
+
+  // The team is on the list but its only matching entries are suspended (or some
+  // other non-allowed status) → specific suspended message.
+  if (importedTeams.some((t) => presentAbbrs.has(t))) {
     throw new Error(
-      `No authorized teams found in this meet file. ` +
-      `Teams found: ${importedTeams.join(", ")}. ` +
-      `Contact DQSync to authorize your team before creating a meet.`,
+      "Your team's DQSync access is suspended. Contact DQSync to restore access.",
     );
   }
+
+  // No imported team is on the list at all → original unauthorized message.
+  throw new Error(
+    `No authorized teams found in this meet file. ` +
+    `Teams found: ${importedTeams.join(", ")}. ` +
+    `Contact DQSync to authorize your team before creating a meet.`,
+  );
 }
 
 // Find the default codeset id (LSA 2023) so DQ pages resolve infractions the
