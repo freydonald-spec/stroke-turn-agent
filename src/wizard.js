@@ -18,6 +18,7 @@ const {
   doc,
   collection,
   addDoc,
+  getDoc,
   getDocs,
   updateDoc,
   writeBatch,
@@ -278,6 +279,53 @@ async function commitBatches(db, items, makeRef, makeData) {
   }
 }
 
+// Authorized-teams gate. Mirrors the web app's config/authorizedTeams check
+// (app/referee/import/page.tsx): block a write only when the allowlist doc is
+// present AND non-empty AND none of the meet's teams appear in it. Fail OPEN in
+// every other case — missing/empty allowlist, no teams in the file, or an
+// unreadable doc — so legitimate meets are never blocked by a config glitch.
+// Comparison is case-insensitive. Throws an Error (caught by the IPC handler and
+// shown in the wizard UI) when the meet has no authorized team.
+async function assertAuthorizedTeams(db, teams) {
+  const importedTeams = (teams || [])
+    .map((t) => String(t).trim().toUpperCase())
+    .filter(Boolean);
+  if (importedTeams.length === 0) return; // nothing to check
+
+  let allowedTeams;
+  try {
+    const snap = await getDoc(doc(db, "config", "authorizedTeams"));
+    if (!snap.exists()) return; // no allowlist → fail open
+    const raw = snap.data().teams;
+    // Entries may be plain strings or { abbreviation } objects (legacy + new).
+    allowedTeams = Array.isArray(raw)
+      ? raw
+          .map((t) =>
+            (typeof t === "string"
+              ? t
+              : t && typeof t === "object"
+                ? String(t.abbreviation ?? "")
+                : "")
+              .trim()
+              .toUpperCase())
+          .filter(Boolean)
+      : [];
+  } catch {
+    return; // could not read the allowlist → fail open
+  }
+
+  if (allowedTeams.length === 0) return; // empty allowlist → fail open
+
+  const anyAuthorized = importedTeams.some((t) => allowedTeams.includes(t));
+  if (!anyAuthorized) {
+    throw new Error(
+      `No authorized teams found in this meet file. ` +
+      `Teams found: ${importedTeams.join(", ")}. ` +
+      `Contact DQSync to authorize your team before creating a meet.`,
+    );
+  }
+}
+
 // Find the default codeset id (LSA 2023) so DQ pages resolve infractions the
 // same way as a web-app-created meet. Codesets are global and already seeded in
 // production by the web app, so we just look them up rather than re-seeding.
@@ -302,6 +350,10 @@ async function findDefaultCodesetId(db) {
  * @returns         { meetId, meetName, pin, adminPin, coachWord, meetType }
  */
 async function createMeet(db, parsed, opts = {}) {
+  // Block creation up front if none of the meet's teams are authorized. Throws
+  // before any Firestore read/write so nothing is created for an unauthorized meet.
+  await assertAuthorizedTeams(db, parsed.teams);
+
   const meetType = opts.meetType === "standard" ? "standard" : "dual";
   const pin = generatePin();
   const adminPin = generateAdminPin(pin);
@@ -379,6 +431,10 @@ async function createMeet(db, parsed, opts = {}) {
  * @returns { eventCount, heatCount }
  */
 async function reimportEventsAndHeats(db, meetId, parsed) {
+  // Block re-import if none of the new file's teams are authorized — this also
+  // writes to Firestore and could overwrite a meet with unauthorized data.
+  await assertAuthorizedTeams(db, parsed.teams);
+
   // 1. Delete every existing doc in events + heats.
   for (const sub of ["events", "heats"]) {
     const snap = await getDocs(collection(db, "meets", meetId, sub));
