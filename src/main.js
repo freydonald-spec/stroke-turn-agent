@@ -3,7 +3,7 @@
  * Main process: Firebase, file watcher, IPC to renderer
  */
 
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, clipboard } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -24,6 +24,8 @@ const {
 const { getAuth, signInAnonymously } = require("firebase/auth");
 const { autoUpdater } = require("electron-updater");
 const simulator = require("./simulator");
+const wizard = require("./wizard");
+const QRCode = require("qrcode");
 
 // ── Firebase config ───────────────────────────────────────────────────────────
 
@@ -79,6 +81,10 @@ let watchFile     = null;
 let heartbeatTimer = null;
 let simulatorMode = false;
 let priorWatchFile = null; // real timing file watched before simulator mode started
+
+// New Meet Setup Wizard state — held between wizard steps until the meet is created.
+let wizardParsed = null;        // parsed meet_details.json
+let wizardTimingFile = null;    // path to the selected timing_system_configuration.json
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -369,6 +375,160 @@ ipcMain.handle("simulator-prev", () => simulator.prevHeat());
 ipcMain.handle("simulator-jump-event", (_event, n) => simulator.jumpEvent(n));
 ipcMain.handle("simulator-jump-heat", (_event, n) => simulator.jumpHeat(n));
 ipcMain.handle("simulator-get-state", () => simulator.getState());
+
+// ── New Meet Setup Wizard ─────────────────────────────────────────────────────
+// Step 1: pick + parse meet_details.json. Holds the parsed result in
+// wizardParsed for the create step and returns a summary for the UI.
+ipcMain.handle("wizard-select-meet-details", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select meet_details.json",
+    filters: [{ name: "JSON Files", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+
+  const filePath = result.filePaths[0];
+  try {
+    const json = wizard.readJsonFile(filePath);
+    const parsed = wizard.parseMeetDetails(json);
+    wizardParsed = parsed;
+    log(`📋 Loaded meet details: ${parsed.meetName || path.basename(filePath)}`, "success");
+    return {
+      success: true,
+      summary: {
+        meetName: parsed.meetName,
+        meetStartDate: parsed.meetStartDate,
+        hostTeamName: parsed.hostTeamName,
+        hostAbbr: parsed.hostAbbr,
+        teams: parsed.teams,
+        visitingTeams: parsed.visitingTeams,
+        laneCount: parsed.laneCount,
+        eventCount: parsed.events.length,
+        heatCount: parsed.heats.length,
+        teamCount: parsed.teams.length,
+        meetType: parsed.meetType,
+      },
+    };
+  } catch (err) {
+    log(`❌ Could not read meet details: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Step 2: pick + parse timing_system_configuration.json. Remembers the path so
+// "Start Watching Files" can watch it after the meet is created.
+ipcMain.handle("wizard-select-timing-config", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select timing_system_configuration.json",
+    filters: [{ name: "JSON Files", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+
+  const filePath = result.filePaths[0];
+  try {
+    const json = wizard.readJsonFile(filePath);
+    const cfg = wizard.parseTimingConfig(json);
+    wizardTimingFile = filePath;
+    log(`⏱️ Loaded timing config: ${cfg.timingSystemType || "timing system"}`, "success");
+    return {
+      success: true,
+      config: {
+        numberOfLanes: cfg.numberOfLanes,
+        timingSystemType: cfg.timingSystemType,
+        filePath,
+      },
+    };
+  } catch (err) {
+    log(`❌ Could not read timing config: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Step 4 → 5: create the meet from the parsed details + chosen meet type, then
+// "connect" the agent to it (set meetId, start heartbeat) exactly as a PIN
+// connect would. Returns the generated PINs + QR data URLs for the UI.
+ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
+  if (!wizardParsed) {
+    return { success: false, error: "No meet details loaded. Go back to Step 1." };
+  }
+  try {
+    if (!auth.currentUser) await signInAnonymously(auth);
+
+    const created = await wizard.createMeet(db, wizardParsed, {
+      meetType,
+      agentVersion: app.getVersion(),
+    });
+
+    // Connect the agent to the new meet (same as connect-by-pin success path).
+    meetId = created.meetId;
+    meetName = created.meetName;
+    lastEvent = null;
+    lastHeat = null;
+    log(`✅ Meet created: ${created.meetName}`, "success");
+    sendStatus({ type: "connected", meetName: created.meetName });
+    startHeartbeat();
+
+    // Persist the meet PIN so a relaunch reconnects, mirroring connect-by-pin.
+    const settings = loadSettings();
+    settings.savedPin = created.pin;
+    if (wizardTimingFile) settings.watchFile = wizardTimingFile;
+    saveSettings(settings);
+
+    // Build QR codes pointing at the public join URL for each credential.
+    const joinUrl = (pin) => `https://dqsync.app/join?pin=${encodeURIComponent(pin)}`;
+    const qrOpts = { margin: 1, width: 220, color: { dark: "#0a1628", light: "#ffffff" } };
+    const [officialQr, adminQr, coachQr] = await Promise.all([
+      QRCode.toDataURL(joinUrl(created.pin), qrOpts),
+      QRCode.toDataURL(joinUrl(created.adminPin), qrOpts),
+      QRCode.toDataURL(joinUrl(created.coachWord), qrOpts),
+    ]);
+
+    return {
+      success: true,
+      meetId: created.meetId,
+      meetName: created.meetName,
+      pin: created.pin,
+      adminPin: created.adminPin,
+      coachWord: created.coachWord,
+      meetType: created.meetType,
+      eventCount: wizardParsed.events.length,
+      heatCount: wizardParsed.heats.length,
+      laneCount: wizardParsed.laneCount,
+      hostTeamName: wizardParsed.hostTeamName,
+      visitingTeams: wizardParsed.visitingTeams,
+      qr: { official: officialQr, admin: adminQr, coach: coachQr },
+    };
+  } catch (err) {
+    log(`❌ Meet creation failed: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Copy text to the OS clipboard via Electron (reliable under file://, where the
+// renderer's navigator.clipboard is not guaranteed to work).
+ipcMain.handle("copy-to-clipboard", (_event, text) => {
+  try {
+    clipboard.writeText(String(text ?? ""));
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+// Step 5: begin watching the timing file selected in Step 2 (the existing Time
+// Drops file-watch pipeline). No-op if no timing file was provided.
+ipcMain.handle("wizard-start-watching", () => {
+  if (!wizardTimingFile) return { success: false, error: "No timing file selected." };
+  if (!fs.existsSync(wizardTimingFile)) {
+    return { success: false, error: "Timing file not found on disk." };
+  }
+  const settings = loadSettings();
+  settings.watchFile = wizardTimingFile;
+  saveSettings(settings);
+  startWatcher(wizardTimingFile);
+  return { success: true, filePath: wizardTimingFile };
+});
 
 // ── Window ────────────────────────────────────────────────────────────────────
 

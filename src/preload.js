@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld("agent", {
   // Connect to a meet by PIN
   connectByPin: (pin) => ipcRenderer.invoke("connect-by-pin", pin),
 
+  // New Meet Setup Wizard
+  wizardSelectMeetDetails: () => ipcRenderer.invoke("wizard-select-meet-details"),
+  wizardSelectTimingConfig: () => ipcRenderer.invoke("wizard-select-timing-config"),
+  wizardCreateMeet: (meetType) => ipcRenderer.invoke("wizard-create-meet", meetType),
+  wizardStartWatching: () => ipcRenderer.invoke("wizard-start-watching"),
+  copyToClipboard: (text) => ipcRenderer.invoke("copy-to-clipboard", text),
+
   // Simulator Mode controls
   startSimulator: () => ipcRenderer.invoke("simulator-start"),
   stopSimulator: () => ipcRenderer.invoke("simulator-stop"),

@@ -193,6 +193,119 @@
     .log-line.error   { color: #f87171; }
     .log-line.warn    { color: #fbbf24; }
     .log-line .time   { color: #334155; margin-right: 6px; }
+
+    /* ── New Meet Wizard ── */
+    #wizard {
+      position: fixed;
+      inset: 0;
+      background: #0a1628;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #wizard.visible { display: flex; }
+    .wiz-head {
+      padding: 16px 24px 12px;
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .wiz-back {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .wiz-back:hover { color: #e2e8f0; }
+    .wiz-steps { display: flex; gap: 6px; margin-left: auto; }
+    .wiz-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #1e293b;
+    }
+    .wiz-dot.active { background: #00c2e0; }
+    .wiz-dot.done   { background: #34d399; }
+    .wiz-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 24px;
+    }
+    .wiz-step { display: none; }
+    .wiz-step.active { display: block; }
+    .wiz-kicker {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #00c2e0; margin-bottom: 6px;
+    }
+    .wiz-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .wiz-sub   { font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 18px; }
+    .wiz-btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      background: #00c2e0; color: #0a1628; transition: background 0.15s;
+    }
+    .wiz-btn:hover { background: #00d4f5; }
+    .wiz-btn:disabled { background: #1e293b; color: #475569; cursor: not-allowed; }
+    .wiz-btn.ghost {
+      background: transparent; border: 1px solid #334155; color: #94a3b8; font-weight: 600;
+    }
+    .wiz-btn.ghost:hover { border-color: #64748b; color: #e2e8f0; background: transparent; }
+    .wiz-card {
+      border: 1px solid #1e293b; background: #0f2040; border-radius: 12px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .wiz-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 7px 0; border-bottom: 1px solid #16233f; font-size: 13px;
+    }
+    .wiz-row:last-child { border-bottom: none; }
+    .wiz-row .k { color: #64748b; }
+    .wiz-row .v { color: #fff; font-weight: 600; text-align: right; }
+    .wiz-err {
+      color: #f87171; font-size: 12px; margin-top: 10px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; padding: 8px 12px; display: none;
+    }
+    .wiz-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .wiz-type {
+      text-align: left; padding: 14px; border-radius: 12px;
+      border: 1px solid #1e293b; background: #0f2040; color: #cbd5e1; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .wiz-type:hover { border-color: rgba(0,194,224,0.4); }
+    .wiz-type.selected { border-color: #00c2e0; background: rgba(0,194,224,0.1); color: #fff; box-shadow: inset 0 0 0 1px rgba(0,194,224,0.35); }
+    .wiz-type .t { font-size: 15px; font-weight: 700; }
+    .wiz-type .d { font-size: 11px; color: #94a3b8; margin-top: 4px; line-height: 1.4; }
+    .wiz-note { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+    .wiz-pin-card {
+      border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+      border: 1px solid #1e293b; background: #0f2040;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .wiz-pin-card.admin { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.08); }
+    .wiz-pin-card .pin-info { flex: 1; min-width: 0; }
+    .wiz-pin-card .pin-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #64748b; font-weight: 600;
+    }
+    .wiz-pin-card.admin .pin-label { color: #fbbf24; }
+    .wiz-pin-card .pin-value {
+      font-family: "Consolas","SF Mono",monospace; font-size: 30px; font-weight: 700;
+      color: #00c2e0; letter-spacing: 0.12em; margin-top: 2px;
+    }
+    .wiz-pin-card.admin .pin-value { color: #fbbf24; font-size: 26px; }
+    .wiz-pin-card.coach .pin-value { color: #34d399; font-size: 20px; letter-spacing: 0.06em; }
+    .wiz-pin-card .pin-roles { font-size: 10px; color: #64748b; margin-top: 3px; }
+    .wiz-qr { width: 64px; height: 64px; border-radius: 6px; flex-shrink: 0; background: #fff; }
+    .wiz-spinner {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 3px solid #1e293b; border-top-color: #00c2e0;
+      animation: spin 0.8s linear infinite; margin: 24px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -214,6 +327,19 @@
       Connect to Meet
     </button>
     <div id="pin-error" style="color:#f87171;font-size:12px;margin-top:8px;text-align:center;display:none;"></div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;">
+      <div style="flex:1;height:1px;background:#1e293b;"></div>
+      <span style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;">or</span>
+      <div style="flex:1;height:1px;background:#1e293b;"></div>
+    </div>
+    <button id="new-meet-btn"
+      style="width:100%;padding:10px;background:transparent;color:#00c2e0;border:1px solid #1e3a5f;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+      + Set up a new meet
+    </button>
+    <p style="font-size:11px;color:#475569;margin-top:8px;text-align:center;">
+      Import from Meet Maestro — no web app needed
+    </p>
   </div>
 
   <!-- Connection status -->
@@ -266,6 +392,129 @@
           style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
         <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── New Meet Setup Wizard ───────────────────────────────────────────── -->
+  <div id="wizard">
+    <div class="wiz-head">
+      <button class="wiz-back" id="wiz-back">← Back</button>
+      <div class="wiz-steps" id="wiz-dots">
+        <div class="wiz-dot"></div><div class="wiz-dot"></div>
+        <div class="wiz-dot"></div><div class="wiz-dot"></div>
+        <div class="wiz-dot"></div>
+      </div>
+    </div>
+
+    <div class="wiz-body">
+
+      <!-- Step 1 — Import Meet Details -->
+      <div class="wiz-step" data-step="1">
+        <div class="wiz-kicker">Step 1 of 5</div>
+        <div class="wiz-title">Import meet details</div>
+        <div class="wiz-sub">Select the <span style="font-family:monospace;color:#cbd5e1;">meet_details.json</span> file exported from Meet Maestro.</div>
+        <button class="wiz-btn" id="wiz-browse-details">Browse…</button>
+        <div class="wiz-err" id="wiz-details-err"></div>
+        <div id="wiz-details-summary" style="display:none;margin-top:16px;">
+          <div class="wiz-card" id="wiz-details-card"></div>
+          <div style="display:flex;gap:10px;">
+            <button class="wiz-btn ghost" id="wiz-details-change" style="flex:1;">Change file</button>
+            <button class="wiz-btn" id="wiz-details-next" style="flex:1;">Continue →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 — Import Timing Config -->
+      <div class="wiz-step" data-step="2">
+        <div class="wiz-kicker">Step 2 of 5</div>
+        <div class="wiz-title">Connect timing system</div>
+        <div class="wiz-sub">Select <span style="font-family:monospace;color:#cbd5e1;">timing_system_configuration.json</span> from your timing system, or skip if you don't have one.</div>
+        <button class="wiz-btn" id="wiz-browse-timing">Browse…</button>
+        <div class="wiz-err" id="wiz-timing-err"></div>
+        <div id="wiz-timing-summary" style="display:none;margin-top:16px;">
+          <div class="wiz-card" id="wiz-timing-card"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="wiz-btn ghost" id="wiz-timing-skip" style="flex:1;">Skip</button>
+          <button class="wiz-btn" id="wiz-timing-next" style="flex:1;" disabled>Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 3 — Meet Type -->
+      <div class="wiz-step" data-step="3">
+        <div class="wiz-kicker">Step 3 of 5</div>
+        <div class="wiz-title">Meet type</div>
+        <div class="wiz-sub">Choose how DQs are approved for this meet.</div>
+        <div class="wiz-type-grid">
+          <button class="wiz-type" data-type="dual">
+            <div class="t">Dual Meet</div>
+            <div class="d">Chief Judge co-sign is final — no Meet Referee approval</div>
+          </button>
+          <button class="wiz-type" data-type="standard">
+            <div class="t">Standard Meet</div>
+            <div class="d">Full approval chain — Meet Referee confirms DQs</div>
+          </button>
+        </div>
+        <div class="wiz-note" id="wiz-type-note"></div>
+        <button class="wiz-btn" id="wiz-type-next">Continue →</button>
+      </div>
+
+      <!-- Step 4 — Review & Create -->
+      <div class="wiz-step" data-step="4">
+        <div class="wiz-kicker">Step 4 of 5</div>
+        <div class="wiz-title">Review &amp; create</div>
+        <div class="wiz-sub">Confirm the details below, then create the meet.</div>
+        <div class="wiz-card" id="wiz-review-card"></div>
+        <div class="wiz-err" id="wiz-create-err"></div>
+        <button class="wiz-btn" id="wiz-create-btn">Create Meet</button>
+      </div>
+
+      <!-- Step 5 — Done / PINs -->
+      <div class="wiz-step" data-step="5">
+        <div id="wiz-creating" style="text-align:center;padding:40px 0;">
+          <div class="wiz-spinner"></div>
+          <div style="font-size:13px;color:#94a3b8;" id="wiz-creating-msg">Creating meet…</div>
+        </div>
+        <div id="wiz-done" style="display:none;">
+          <div class="wiz-kicker" style="color:#34d399;">Meet created ✓</div>
+          <div class="wiz-title" id="wiz-done-name">Meet</div>
+          <div class="wiz-sub">Share these credentials with your officials. The Admin PIN is shown only here.</div>
+
+          <div class="wiz-pin-card">
+            <div class="pin-info">
+              <div class="pin-label">Official PIN</div>
+              <div class="pin-value" id="wiz-pin-official">----</div>
+              <div class="pin-roles">S&amp;T · Chief Judge · Referee · Starter</div>
+            </div>
+            <img class="wiz-qr" id="wiz-qr-official" alt="" />
+          </div>
+
+          <div class="wiz-pin-card admin">
+            <div class="pin-info">
+              <div class="pin-label">Admin PIN</div>
+              <div class="pin-value" id="wiz-pin-admin">------</div>
+              <div class="pin-roles">Scorekeeper · Admin tools — do not share with judges</div>
+            </div>
+            <img class="wiz-qr" id="wiz-qr-admin" alt="" />
+          </div>
+
+          <div class="wiz-pin-card coach">
+            <div class="pin-info">
+              <div class="pin-label">Coach Word</div>
+              <div class="pin-value" id="wiz-pin-coach">—</div>
+              <div class="pin-roles">Coaches — read-only DQ view</div>
+            </div>
+            <img class="wiz-qr" id="wiz-qr-coach" alt="" />
+          </div>
+
+          <div style="display:flex;gap:10px;margin:16px 0 10px;">
+            <button class="wiz-btn ghost" id="wiz-copy-pins" style="flex:1;">Copy all PINs</button>
+          </div>
+          <button class="wiz-btn" id="wiz-start-watching">Start Watching Files →</button>
+          <div class="wiz-err" id="wiz-watch-err"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -437,6 +686,253 @@
     });
     simEventInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simGoBtn.click(); });
     simHeatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') simGoBtn.click(); });
+
+    // ── New Meet Setup Wizard ─────────────────────────────────────────────────
+
+    const wizardEl    = document.getElementById('wizard');
+    const newMeetBtn  = document.getElementById('new-meet-btn');
+    const wizBack     = document.getElementById('wiz-back');
+    const wizDots     = Array.from(document.getElementById('wiz-dots').children);
+    const wizSteps    = Array.from(document.querySelectorAll('.wiz-step'));
+
+    const wiz = { step: 1, summary: null, timing: null, meetType: null, created: null };
+
+    function fmtDate(d) {
+      if (!d) return '—';
+      // d is "YYYY-MM-DD"; render as a friendly local date without TZ drift.
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+      if (!m) return d;
+      const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function rows(el, pairs) {
+      el.innerHTML = pairs
+        .map(([k, v]) => `<div class="wiz-row"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>`)
+        .join('');
+    }
+
+    function showWizard() {
+      wizardEl.classList.add('visible');
+      gotoStep(1);
+    }
+    function hideWizard() {
+      wizardEl.classList.remove('visible');
+    }
+
+    function gotoStep(n) {
+      wiz.step = n;
+      wizSteps.forEach((s) => s.classList.toggle('active', Number(s.dataset.step) === n));
+      wizDots.forEach((d, i) => {
+        d.classList.toggle('active', i + 1 === n);
+        d.classList.toggle('done', i + 1 < n);
+      });
+      // Back is meaningless once the meet is created (step 5).
+      wizBack.style.visibility = n >= 5 ? 'hidden' : 'visible';
+      if (n === 3) enterStep3();
+      if (n === 4) renderReview();
+    }
+
+    newMeetBtn.addEventListener('click', showWizard);
+
+    wizBack.addEventListener('click', () => {
+      if (wiz.step <= 1) { hideWizard(); return; }
+      gotoStep(wiz.step - 1);
+    });
+
+    // ── Step 1: meet details ──
+    const detailsErr     = document.getElementById('wiz-details-err');
+    const detailsSummary = document.getElementById('wiz-details-summary');
+    const detailsCard    = document.getElementById('wiz-details-card');
+    const browseDetails  = document.getElementById('wiz-browse-details');
+
+    async function pickMeetDetails() {
+      detailsErr.style.display = 'none';
+      const res = await window.agent.wizardSelectMeetDetails();
+      if (!res || res.canceled) return;
+      if (!res.success) {
+        detailsErr.textContent = res.error || 'Could not read that file.';
+        detailsErr.style.display = 'block';
+        return;
+      }
+      wiz.summary = res.summary;
+      const s = res.summary;
+      const visiting = s.visitingTeams && s.visitingTeams.length
+        ? s.visitingTeams.join(', ') : '—';
+      rows(detailsCard, [
+        ['Meet name', s.meetName || '—'],
+        ['Date', fmtDate(s.meetStartDate)],
+        ['Host team', s.hostTeamName || (s.hostAbbr || '—')],
+        [s.visitingTeams && s.visitingTeams.length > 1 ? 'Visiting teams' : 'Visiting team', visiting],
+        ['Lanes', s.laneCount || '—'],
+        ['Events', s.eventCount],
+        ['Heats', s.heatCount],
+      ]);
+      detailsSummary.style.display = 'block';
+      browseDetails.style.display = 'none';
+    }
+
+    browseDetails.addEventListener('click', pickMeetDetails);
+    document.getElementById('wiz-details-change').addEventListener('click', pickMeetDetails);
+    document.getElementById('wiz-details-next').addEventListener('click', () => gotoStep(2));
+
+    // ── Step 2: timing config ──
+    const timingErr     = document.getElementById('wiz-timing-err');
+    const timingSummary = document.getElementById('wiz-timing-summary');
+    const timingCard    = document.getElementById('wiz-timing-card');
+    const timingNext    = document.getElementById('wiz-timing-next');
+
+    document.getElementById('wiz-browse-timing').addEventListener('click', async () => {
+      timingErr.style.display = 'none';
+      const res = await window.agent.wizardSelectTimingConfig();
+      if (!res || res.canceled) return;
+      if (!res.success) {
+        timingErr.textContent = res.error || 'Could not read that file.';
+        timingErr.style.display = 'block';
+        return;
+      }
+      wiz.timing = res.config;
+      const sys = res.config.timingSystemType || 'Timing system';
+      const lanes = res.config.numberOfLanes ? ` · ${res.config.numberOfLanes} lanes` : '';
+      let warn = '';
+      if (wiz.summary && res.config.numberOfLanes && wiz.summary.laneCount &&
+          res.config.numberOfLanes !== wiz.summary.laneCount) {
+        warn = `<div style="font-size:11px;color:#fbbf24;margin-top:6px;">⚠ Lane count (${res.config.numberOfLanes}) differs from meet details (${wiz.summary.laneCount}).</div>`;
+      }
+      timingCard.innerHTML =
+        `<div style="display:flex;align-items:center;gap:8px;">
+           <span style="width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>
+           <span style="font-size:14px;font-weight:600;color:#fff;">${escapeHtml(sys)} connected${escapeHtml(lanes)}</span>
+         </div>${warn}`;
+      timingSummary.style.display = 'block';
+      timingNext.disabled = false;
+    });
+
+    document.getElementById('wiz-timing-skip').addEventListener('click', () => {
+      wiz.timing = null;
+      gotoStep(3);
+    });
+    timingNext.addEventListener('click', () => gotoStep(3));
+
+    // ── Step 3: meet type ──
+    const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
+    const typeNote = document.getElementById('wiz-type-note');
+
+    function selectType(t) {
+      wiz.meetType = t;
+      typeBtns.forEach((b) => b.classList.toggle('selected', b.dataset.type === t));
+    }
+    typeBtns.forEach((b) => b.addEventListener('click', () => selectType(b.dataset.type)));
+
+    function enterStep3() {
+      // Pre-select the auto-detected type (unless the user already chose one).
+      const auto = (wiz.summary && wiz.summary.meetType) || 'dual';
+      if (!wiz.meetType) selectType(auto);
+      else selectType(wiz.meetType);
+      const n = wiz.summary ? wiz.summary.teamCount : 0;
+      typeNote.textContent = `Auto-detected based on ${n} team${n === 1 ? '' : 's'} in the heat sheet — tap to override.`;
+    }
+    document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(4));
+
+    // ── Step 4: review ──
+    function renderReview() {
+      const s = wiz.summary || {};
+      const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
+      const timingLabel = wiz.timing
+        ? `${wiz.timing.timingSystemType || 'Timing system'}${wiz.timing.numberOfLanes ? ` · ${wiz.timing.numberOfLanes} lanes` : ''}`
+        : 'None';
+      rows(document.getElementById('wiz-review-card'), [
+        ['Meet name', s.meetName || '—'],
+        ['Date', fmtDate(s.meetStartDate)],
+        ['Host team', s.hostTeamName || '—'],
+        [s.visitingTeams && s.visitingTeams.length > 1 ? 'Visiting teams' : 'Visiting team', visiting],
+        ['Lanes', s.laneCount || '—'],
+        ['Meet type', wiz.meetType === 'standard' ? 'Standard Meet' : 'Dual Meet'],
+        ['Events', s.eventCount],
+        ['Timing system', timingLabel],
+      ]);
+    }
+
+    // ── Step 4 → 5: create ──
+    const createErrEl = document.getElementById('wiz-create-err');
+    const creatingEl  = document.getElementById('wiz-creating');
+    const doneEl      = document.getElementById('wiz-done');
+
+    document.getElementById('wiz-create-btn').addEventListener('click', async () => {
+      createErrEl.style.display = 'none';
+      gotoStep(5);
+      creatingEl.style.display = 'block';
+      doneEl.style.display = 'none';
+      const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual');
+      if (!res || !res.success) {
+        // Surface the error on step 4 so the user can retry.
+        gotoStep(4);
+        createErrEl.textContent = (res && res.error) || 'Could not create the meet.';
+        createErrEl.style.display = 'block';
+        return;
+      }
+      wiz.created = res;
+      renderDone(res);
+    });
+
+    function renderDone(res) {
+      document.getElementById('wiz-done-name').textContent = res.meetName || 'Meet created';
+      document.getElementById('wiz-pin-official').textContent = res.pin;
+      document.getElementById('wiz-pin-admin').textContent = res.adminPin;
+      document.getElementById('wiz-pin-coach').textContent = res.coachWord;
+      document.getElementById('wiz-qr-official').src = res.qr.official;
+      document.getElementById('wiz-qr-admin').src = res.qr.admin;
+      document.getElementById('wiz-qr-coach').src = res.qr.coach;
+      creatingEl.style.display = 'none';
+      doneEl.style.display = 'block';
+    }
+
+    // ── Step 5: copy PINs + start watching ──
+    document.getElementById('wiz-copy-pins').addEventListener('click', async (e) => {
+      const r = wiz.created;
+      if (!r) return;
+      const text =
+        `${r.meetName}\n\n` +
+        `Official PIN: ${r.pin}  (S&T, Chief Judge, Referee, Starter)\n` +
+        `Admin PIN: ${r.adminPin}  (Scorekeeper / Admin — do not share with judges)\n` +
+        `Coach Word: ${r.coachWord}  (Coaches — read-only)\n\n` +
+        `Join at https://dqsync.app/join`;
+      let ok = await window.agent.copyToClipboard(text);
+      if (!ok) {
+        try { await navigator.clipboard.writeText(text); ok = true; } catch { /* ignore */ }
+      }
+      if (ok) {
+        const btn = e.currentTarget;
+        const orig = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }
+    });
+
+    document.getElementById('wiz-start-watching').addEventListener('click', async () => {
+      const watchErr = document.getElementById('wiz-watch-err');
+      watchErr.style.display = 'none';
+      const res = await window.agent.wizardStartWatching();
+      // Reveal the main monitoring UI either way — the meet is already connected.
+      enterConnectedUI();
+      if (wiz.created && wiz.timing && wiz.timing.filePath) {
+        setFilePath(wiz.timing.filePath);
+      }
+      hideWizard();
+      if (!res || !res.success) {
+        // No timing file was selected — user can pick one from the main screen.
+        addLog({ msg: 'No timing file selected — choose one to begin syncing.', type: 'warn', time: new Date().toLocaleTimeString() });
+      }
+    });
+
+    // Reveal the connected monitoring UI (shared by PIN connect + wizard finish).
+    function enterConnectedUI() {
+      pinSection.style.display = 'none';
+      statusCard.style.display = 'flex';
+      fileSection.style.display = 'block';
+      simulatorSection.style.display = 'block';
+      logSection.style.display = 'flex';
+    }
 
     // ── On load: restore saved settings ──────────────────────────────────────
 
