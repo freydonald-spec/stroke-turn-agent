@@ -298,6 +298,8 @@ async function buildMeetInfo(data) {
     currentEvent:  data.currentEvent  ?? null,
     currentHeat:   data.currentHeat   ?? null,
     currentStroke: data.currentStroke ?? null,
+    status:        data.status ?? "active",
+    codesetId:     data.codesetId ?? null,
   };
 }
 
@@ -433,6 +435,196 @@ ipcMain.handle("select-file", async () => {
 ipcMain.handle("get-settings", () => {
   return loadSettings();
 });
+
+// Admin → "Lock meet": write status "locked"/"active" to the meet doc (the same
+// field the web app checks). The watcher keeps running regardless.
+ipcMain.handle('set-meet-status', async (_event, status) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  if (status !== 'active' && status !== 'locked') {
+    return { success: false, error: 'Invalid status.' };
+  }
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { status });
+    log(status === 'locked' ? "🔒 Meet locked" : "🔓 Meet unlocked",
+        status === 'locked' ? "warn" : "success");
+    return { success: true, status };
+  } catch (err) {
+    log(`❌ Could not change meet status: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Codeset": list codesets + current selection, and switch the meet's
+// codesetId. Officials read the codeset on each DQ entry, so this takes effect
+// immediately. Mirrors app/referee/codes/page.tsx.
+ipcMain.handle('get-codesets', async () => {
+  if (!meetId) return { success: false };
+  try {
+    const [csSnap, meetSnap] = await Promise.all([
+      getDocs(collection(db, 'codesets')),
+      getDoc(doc(db, 'meets', meetId)),
+    ]);
+    const codesets = csSnap.docs.map((d) => ({
+      id: d.id,
+      name: (d.data().name ?? '').toString(),
+      isDefault: !!d.data().isDefault,
+    }));
+    const currentCodesetId = meetSnap.exists() ? (meetSnap.data().codesetId ?? null) : null;
+    return { success: true, codesets, currentCodesetId };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('set-codeset', async (_event, codesetId) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { codesetId });
+    log("🧾 Codeset changed", "success");
+    return { success: true, codesetId };
+  } catch (err) {
+    log(`❌ Could not change codeset: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Export DQs": fetch confirmed + overturned DQs and write the same
+// report the web scorekeeper produces (see app/scorekeeper/page.tsx). Saves via
+// a native dialog as .txt (plain-text report) or .csv.
+ipcMain.handle('export-dqs', async () => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  try {
+    const meetSnap = await getDoc(doc(db, 'meets', meetId));
+    const meetData = meetSnap.exists() ? meetSnap.data() : {};
+
+    // Event labels: eventNumber → short label (mirror scorekeeper's map).
+    const eventsSnap = await getDocs(collection(db, 'meets', meetId, 'events'));
+    const eventLabelMap = new Map();
+    eventsSnap.forEach((d) => {
+      const data = d.data();
+      eventLabelMap.set(Number(data.eventNumber), shortEventLabel(String(data.eventLabel ?? '')));
+    });
+
+    // Report rows = confirmed + overturned DQs.
+    const dqSnap = await getDocs(query(
+      collection(db, 'meets', meetId, 'dqs'),
+      where('status', 'in', ['confirmed', 'overturned']),
+    ));
+    const dqs = dqSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const meetName = (meetData.name ?? meetData.meetName ?? 'Untitled Meet').toString();
+    const safeName = `${meetName} — DQ Report`.replace(/[\/\\:*?"<>|]/g, '-');
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Export DQ Report",
+      defaultPath: `${safeName}.txt`,
+      filters: [
+        { name: "Text Report", extensions: ["txt"] },
+        { name: "CSV", extensions: ["csv"] },
+      ],
+    });
+    if (result.canceled || !result.filePath) return { canceled: true };
+
+    const isCsv = result.filePath.toLowerCase().endsWith('.csv');
+    const out = isCsv
+      ? buildDqReportCsv(eventLabelMap, dqs)
+      : buildDqReportText(meetData, eventLabelMap, dqs);
+    fs.writeFileSync(result.filePath, out, 'utf8');
+
+    const count = sortReportDqs(dqs).length;
+    log(`📤 Exported ${count} DQ${count === 1 ? '' : 's'} → ${path.basename(result.filePath)}`, "success");
+    return { success: true, filePath: result.filePath, count };
+  } catch (err) {
+    log(`❌ Export DQs failed: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// ── DQ report helpers (ported from app/scorekeeper/page.tsx to match exactly) ──
+
+// "50m Freestyle Girls 11-12" → "50m Freestyle"
+function shortEventLabel(label) {
+  return String(label).replace(/\s+(Girls|Boys|Men|Women|Mixed|\().*/i, "").trim();
+}
+
+function formatDateLong(date) {
+  if (!date) return "";
+  const d = new Date(date + "T00:00:00");
+  if (isNaN(d.getTime())) return date;
+  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
+
+// Meet Maestro dual code for a relay infraction (6A{n}); early take-off stays 6B.
+function relayMaestroCode(swimmerNumber, infractionCode) {
+  if (!swimmerNumber) return infractionCode;
+  if (infractionCode === "6B") return "6B";
+  return `6A${swimmerNumber}`;
+}
+
+function isRelayEto(dq) {
+  return dq.relayMode === true || dq.infractionCode === "6B";
+}
+
+// On-report code label. Relay stroke infractions show the computed dual code +
+// the stroke code; everything else shows the code as-is.
+function dqCodeDisplay(dq) {
+  if (dq.relaySwimmerNumber && !isRelayEto(dq)) {
+    return `${relayMaestroCode(dq.relaySwimmerNumber, dq.infractionCode)}  ${dq.infractionCode}`;
+  }
+  return dq.infractionCode;
+}
+
+function reportStatusLabel(s) {
+  return s === "overturned" ? "Overturned" : "Confirmed";
+}
+
+function sortReportDqs(dqs) {
+  return [...dqs].sort((a, b) =>
+    (Number(a.eventNumber ?? 0) - Number(b.eventNumber ?? 0)) ||
+    (Number(a.heatNumber ?? 0) - Number(b.heatNumber ?? 0)) ||
+    (Number(a.laneNumber ?? 0) - Number(b.laneNumber ?? 0)));
+}
+
+// Plain-text report — byte-for-byte the same layout as scorekeeper exportPlainText().
+function buildDqReportText(meetData, eventLabelMap, dqs) {
+  const rows = sortReportDqs(dqs);
+  const meetName = (meetData.name ?? meetData.meetName ?? "Untitled Meet").toString();
+  const dateStr = formatDateLong(meetData.date);
+  const sep = "─".repeat(40);
+  const lines = ["DQSync Meet Report", `${meetName}${dateStr ? ` — ${dateStr}` : ""}`, sep];
+  for (const dq of rows) {
+    const label = eventLabelMap.get(Number(dq.eventNumber));
+    lines.push(`Event ${dq.eventNumber ?? "—"} · Heat ${dq.heatNumber ?? "—"}${label ? ` · ${label}` : ""}`);
+    lines.push(`Lane ${dq.laneNumber} · ${dq.swimmerName ?? "—"}`);
+    lines.push(`Code: ${dqCodeDisplay(dq)} — ${dq.infractionDescription}`);
+    lines.push(`Status: ${reportStatusLabel(dq.status)}`);
+    lines.push(sep);
+  }
+  lines.push("", `Total DQs: ${rows.length}`, `Generated: ${new Date().toLocaleString()}`);
+  return lines.join("\n");
+}
+
+// CSV variant of the same rows (when the user saves with a .csv extension).
+function buildDqReportCsv(eventLabelMap, dqs) {
+  const rows = sortReportDqs(dqs);
+  const esc = (v) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const out = ["Event,Heat,Lane,Swimmer,Code,Description,Status"];
+  for (const dq of rows) {
+    out.push([
+      dq.eventNumber ?? "",
+      dq.heatNumber ?? "",
+      dq.laneNumber ?? "",
+      dq.swimmerName ?? "",
+      dqCodeDisplay(dq),
+      dq.infractionDescription ?? "",
+      reportStatusLabel(dq.status),
+    ].map(esc).join(","));
+  }
+  return out.join("\n");
+}
 
 // ── Simulator Mode ──────────────────────────────────────────────────────────────
 // Drives src/simulator.js, which writes a fake timing_system_configuration.json

@@ -171,7 +171,7 @@
     .back-btn:hover { color: #00d4f5; }
     .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 700; margin: 4px 0 10px; }
 
-    /* ── QR overlay modal ── */
+    /* ── QR overlay modal (single role) ── */
     #qr-overlay {
       position: fixed; inset: 0; z-index: 80;
       background: rgba(4,8,16,0.82); display: none;
@@ -180,24 +180,46 @@
     #qr-overlay.visible { display: flex; }
     .qr-modal {
       background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 16px;
-      padding: 22px; width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto;
+      padding: 26px 24px; width: 100%; max-width: 320px; text-align: center;
     }
-    .qr-modal h2 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-    .qr-modal .qm-sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
-    .qr-item {
-      display: flex; align-items: center; gap: 14px;
-      border: 1px solid #1e293b; border-radius: 12px; padding: 12px; margin-bottom: 10px;
+    .qr-modal.official { border-color: rgba(0,194,224,0.5); }
+    .qr-modal.admin    { border-color: rgba(245,158,11,0.5); }
+    .qr-modal.coach    { border-color: rgba(52,211,153,0.5); }
+    .qr-role-label {
+      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #00c2e0; margin-bottom: 16px;
     }
-    .qr-item.admin { border-color: rgba(245,158,11,0.35); }
-    .qr-item.coach { border-color: rgba(52,211,153,0.3); }
-    .qr-item img { width: 92px; height: 92px; border-radius: 8px; background: #fff; flex-shrink: 0; }
-    .qr-item .qi-info { min-width: 0; }
-    .qr-item .qi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #00c2e0; }
-    .qr-item.admin .qi-label { color: #fbbf24; }
-    .qr-item.coach .qi-label { color: #34d399; }
-    .qr-item .qi-value { font-family: "Consolas","SF Mono",monospace; font-size: 22px; font-weight: 700; color: #fff; margin-top: 3px; letter-spacing: 0.08em; }
-    .qr-item.coach .qi-value { font-size: 16px; }
-    .qr-item .qi-role { font-size: 10px; color: #64748b; margin-top: 4px; line-height: 1.3; }
+    .qr-modal.admin .qr-role-label { color: #fbbf24; }
+    .qr-modal.coach .qr-role-label { color: #34d399; }
+    .qr-big { width: 200px; height: 200px; border-radius: 12px; background: #fff; }
+    .qr-big-value {
+      font-family: "Consolas","SF Mono",monospace; font-size: 32px; font-weight: 700;
+      color: #fff; margin-top: 16px; letter-spacing: 0.1em; word-break: break-word;
+    }
+    .qr-modal.coach .qr-big-value { font-size: 22px; }
+
+    /* ── Lock badge / sim banner / codeset / lock dot ── */
+    .conn-locked {
+      display: none; font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+      color: #fbbf24; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.4);
+      border-radius: 6px; padding: 2px 7px; margin-left: auto;
+    }
+    #sim-banner {
+      display: none; margin: 0 0 14px; padding: 10px 14px; border-radius: 10px;
+      background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.45);
+      color: #fbbf24; font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .la-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .la-dot.green { background: #34d399; box-shadow: 0 0 5px #34d399; }
+    .la-dot.red   { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+    .cs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cs-opt {
+      padding: 10px; border-radius: 9px; border: 1px solid #1e293b; background: #0a1628;
+      color: #cbd5e1; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .cs-opt:hover { border-color: rgba(0,194,224,0.4); }
+    .cs-opt.selected { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #fff; }
 
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -431,40 +453,13 @@
     <button id="upd-btn" style="display:none;"></button>
   </div>
 
-  <!-- ── QR overlay modal ─────────────────────────────────────────────────── -->
+  <!-- ── QR overlay modal (single role at a time) ────────────────────────── -->
   <div id="qr-overlay">
-    <div class="qr-modal">
-      <h2>Join QR codes</h2>
-      <div class="qm-sub">Officials &amp; scorekeepers scan to /join · coaches to /coach</div>
-
-      <div class="qr-item">
-        <img id="qr-img-official" alt="" />
-        <div class="qi-info">
-          <div class="qi-label">Officials PIN</div>
-          <div class="qi-value" id="qr-val-official">----</div>
-          <div class="qi-role">S&amp;T · Chief Judge · Referee · Starter</div>
-        </div>
-      </div>
-
-      <div class="qr-item admin">
-        <img id="qr-img-admin" alt="" />
-        <div class="qi-info">
-          <div class="qi-label">Admin PIN</div>
-          <div class="qi-value" id="qr-val-admin">------</div>
-          <div class="qi-role">Scorekeeper / Admin — do not share with judges</div>
-        </div>
-      </div>
-
-      <div class="qr-item coach">
-        <img id="qr-img-coach" alt="" />
-        <div class="qi-info">
-          <div class="qi-label">Coach Word</div>
-          <div class="qi-value" id="qr-val-coach">—</div>
-          <div class="qi-role">Coaches — read-only DQ view</div>
-        </div>
-      </div>
-
-      <button class="btn btn-ghost" id="qr-close" style="margin-top:6px;">Close</button>
+    <div class="qr-modal" id="qr-modal">
+      <div class="qr-role-label" id="qr-role-label">Officials PIN</div>
+      <img id="qr-img" class="qr-big" alt="" />
+      <div class="qr-big-value" id="qr-big-value">----</div>
+      <button class="btn btn-ghost" id="qr-close" style="margin-top:18px;">Close</button>
     </div>
   </div>
 
@@ -473,7 +468,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.22</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.23</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -502,23 +497,20 @@
     <div class="scr-pad">
       <div class="scr-title" style="margin-bottom:16px;">DQSync Agent</div>
 
+      <!-- Simulator-active warning banner -->
+      <div id="sim-banner">⚠ SIMULATOR ACTIVE — not reading timing file</div>
+
       <!-- Connected card -->
       <div class="conn-card">
         <div class="conn-top">
           <span class="conn-dot"></span>
           <span class="conn-label">Connected</span>
           <span class="conn-sim" id="conn-sim">· Simulated</span>
+          <span class="conn-locked" id="conn-locked">LOCKED</span>
         </div>
-        <button class="qr-btn" id="conn-qr-btn" title="Show QR codes" aria-label="Show QR codes">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="14"/>
-            <line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/>
-            <line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="21" y2="21"/>
-          </svg>
-        </button>
         <div class="conn-meet" id="conn-meet">Meet</div>
         <div class="pills" id="conn-pills"></div>
+        <p style="font-size:10px;color:#475569;margin-top:8px;">Tap a PIN to show its QR code</p>
       </div>
 
       <!-- Heat card -->
@@ -543,30 +535,6 @@
         </div>
         <div class="act-log" id="act-log"></div>
       </div>
-
-      <!-- Simulator -->
-      <div style="margin-top:20px;">
-        <label class="sim-toggle-row">
-          <input type="checkbox" id="sim-toggle" />
-          <span>Simulator Mode</span>
-        </label>
-        <div id="sim-panel">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span id="sim-state" style="font-family:'Consolas','SF Mono',monospace;font-size:12px;color:#00c2e0;min-width:58px;">E1 · H1</span>
-            <button id="sim-prev-btn" style="padding:4px 10px;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">← Prev</button>
-            <button id="sim-next-btn" style="padding:4px 10px;background:#00c2e0;color:#0a1628;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Next →</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#94a3b8;">
-            <span>Event:</span>
-            <input id="sim-event-input" type="number" min="1" inputmode="numeric"
-              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
-            <span>Heat:</span>
-            <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
-              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
-            <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -583,16 +551,28 @@
       <div class="admin-card">
         <div class="conn-meet" id="admin-meet" style="margin-top:0;">Meet</div>
         <div class="pills" id="admin-pills" style="margin-top:12px;"></div>
-        <div id="admin-timing" style="font-size:11px;color:#64748b;margin-top:12px;"></div>
+        <p style="font-size:10px;color:#475569;margin-top:8px;">Tap a PIN to show its QR code</p>
+
+        <div style="margin-top:16px;">
+          <div class="section-label" style="margin:0 0 8px;">Codeset</div>
+          <div class="cs-grid">
+            <button class="cs-opt" data-cs-name="LSA 2023">LSA 2023</button>
+            <button class="cs-opt" data-cs-name="NFHS / HY-Tek">NFHS / HY-Tek</button>
+          </div>
+        </div>
       </div>
 
       <!-- Actions -->
       <div class="section-label">Actions</div>
-      <button class="admin-action" id="admin-qr">
+      <button class="admin-action" id="lock-btn">
+        <span class="ai-ico"><span class="la-dot green" id="lock-dot"></span></span>
+        <span class="ai-text"><span id="lock-text">Meet is active</span><div class="ai-sub" id="lock-sub">Tap to lock — officials can't submit DQs</div></span>
+      </button>
+      <button class="admin-action" id="export-btn">
         <span class="ai-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/><line x1="21" y1="17" x2="21" y2="21"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </span>
-        <span class="ai-text">Show QR codes<div class="ai-sub">Officials, Admin &amp; Coach join codes</div></span>
+        <span class="ai-text">Export DQs<div class="ai-sub">Save the confirmed DQ report as .txt or .csv</div></span>
       </button>
       <button class="admin-action" id="admin-update-file">
         <span class="ai-ico">
@@ -620,6 +600,25 @@
           <input type="checkbox" id="sim-toggle-admin" />
           <span>Simulator Mode</span>
         </label>
+        <p style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.4;">
+          Overrides the timing file and auto-advances heats. Only use for testing.
+        </p>
+        <div id="sim-panel" style="margin-top:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="sim-state" style="font-family:'Consolas','SF Mono',monospace;font-size:12px;color:#00c2e0;min-width:58px;">E1 · H1</span>
+            <button id="sim-prev-btn" style="padding:4px 10px;background:#1e293b;color:#e2e8f0;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">← Prev</button>
+            <button id="sim-next-btn" style="padding:4px 10px;background:#00c2e0;color:#0a1628;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">Next →</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:#94a3b8;">
+            <span>Event:</span>
+            <input id="sim-event-input" type="number" min="1" inputmode="numeric"
+              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+            <span>Heat:</span>
+            <input id="sim-heat-input" type="number" min="1" inputmode="numeric"
+              style="width:38px;padding:3px 4px;background:#0a1628;border:1px solid #1e293b;border-radius:4px;color:#fff;font-size:11px;outline:none;font-family:inherit;" />
+            <button id="sim-go-btn" style="padding:3px 12px;background:#334155;color:#e2e8f0;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">Go</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -818,11 +817,12 @@
     });
 
     // ── Enter the connected (main) screen ───────────────────────────────────────
+    // Each pill carries data-role so tapping it opens that role's QR overlay.
     function pillsHtml(info) {
       const parts = [];
-      if (info.pin)       parts.push(`<span class="pill"><span class="pk">PIN</span><span class="pv">${escapeHtml(info.pin)}</span></span>`);
-      if (info.adminPin)  parts.push(`<span class="pill"><span class="pk">Admin</span><span class="pv">${escapeHtml(info.adminPin)}</span></span>`);
-      if (info.coachWord) parts.push(`<span class="pill"><span class="pk">Coach</span><span class="pv">${escapeHtml(info.coachWord)}</span></span>`);
+      if (info.pin)       parts.push(`<span class="pill" data-role="official" title="Show QR code"><span class="pk">PIN</span><span class="pv">${escapeHtml(info.pin)}</span></span>`);
+      if (info.adminPin)  parts.push(`<span class="pill" data-role="admin" title="Show QR code"><span class="pk">Admin</span><span class="pv">${escapeHtml(info.adminPin)}</span></span>`);
+      if (info.coachWord) parts.push(`<span class="pill" data-role="coach" title="Show QR code"><span class="pk">Coach</span><span class="pv">${escapeHtml(info.coachWord)}</span></span>`);
       return parts.join('');
     }
 
@@ -836,6 +836,8 @@
       if (info.currentEvent != null && info.currentHeat != null) {
         setHeat(info.currentEvent, info.currentHeat, info.currentStroke);
       }
+      renderLockState();
+      loadCodesets();
       showScreen('main');
     }
 
@@ -844,26 +846,109 @@
       document.getElementById('now-heat').textContent = `Event ${event} · Heat ${heat}${strokeLabel}`;
     }
 
-    // ── QR overlay ──────────────────────────────────────────────────────────────
+    // ── QR overlay (single role at a time) ───────────────────────────────────────
     const qrOverlay = document.getElementById('qr-overlay');
-    function openQrOverlay() {
+    const qrModal   = document.getElementById('qr-modal');
+    function openQr(role) {
       const info = currentMeetInfo;
       if (!info) return;
-      document.getElementById('qr-val-official').textContent = info.pin || '—';
-      document.getElementById('qr-val-admin').textContent    = info.adminPin || '—';
-      document.getElementById('qr-val-coach').textContent    = info.coachWord || '—';
-      if (info.qr) {
-        if (info.qr.official) document.getElementById('qr-img-official').src = info.qr.official;
-        if (info.qr.admin)    document.getElementById('qr-img-admin').src    = info.qr.admin;
-        if (info.qr.coach)    document.getElementById('qr-img-coach').src    = info.qr.coach;
-      }
+      const map = {
+        official: { label: 'Officials PIN', value: info.pin,       qr: info.qr && info.qr.official },
+        admin:    { label: 'Admin PIN',     value: info.adminPin,  qr: info.qr && info.qr.admin },
+        coach:    { label: 'Coach Word',    value: info.coachWord, qr: info.qr && info.qr.coach },
+      };
+      const m = map[role];
+      if (!m) return;
+      qrModal.className = `qr-modal ${role}`;
+      document.getElementById('qr-role-label').textContent = m.label;
+      document.getElementById('qr-big-value').textContent  = m.value || '—';
+      const img = document.getElementById('qr-img');
+      if (m.qr) { img.src = m.qr; img.style.display = 'block'; } else { img.style.display = 'none'; }
       qrOverlay.classList.add('visible');
     }
     function closeQrOverlay() { qrOverlay.classList.remove('visible'); }
-    document.getElementById('conn-qr-btn').addEventListener('click', openQrOverlay);
-    document.getElementById('admin-qr').addEventListener('click', openQrOverlay);
+
+    // Delegate pill taps on both the main and admin pill rows.
+    function onPillsClick(e) {
+      const pill = e.target.closest('.pill[data-role]');
+      if (pill) openQr(pill.dataset.role);
+    }
+    document.getElementById('conn-pills').addEventListener('click', onPillsClick);
+    document.getElementById('admin-pills').addEventListener('click', onPillsClick);
     document.getElementById('qr-close').addEventListener('click', closeQrOverlay);
     qrOverlay.addEventListener('click', (e) => { if (e.target === qrOverlay) closeQrOverlay(); });
+
+    // ── Lock / unlock ────────────────────────────────────────────────────────────
+    function renderLockState() {
+      const locked = !!(currentMeetInfo && currentMeetInfo.status === 'locked');
+      document.getElementById('conn-locked').style.display = locked ? 'inline-block' : 'none';
+      document.getElementById('lock-dot').className = `la-dot ${locked ? 'red' : 'green'}`;
+      document.getElementById('lock-text').textContent = locked ? 'Meet is locked' : 'Meet is active';
+      document.getElementById('lock-sub').textContent = locked
+        ? 'Tap to unlock — officials can submit DQs again'
+        : "Tap to lock — officials can't submit DQs";
+    }
+
+    document.getElementById('lock-btn').addEventListener('click', async () => {
+      if (!currentMeetInfo) return;
+      const locked = currentMeetInfo.status === 'locked';
+      if (!locked && !confirm('Lock this meet? Officials will not be able to submit DQs.')) return;
+      const next = locked ? 'active' : 'locked';
+      const res = await window.agent.setMeetStatus(next);
+      if (res && res.success) {
+        currentMeetInfo.status = next;
+        renderLockState();
+        addLog({ msg: next === 'locked' ? 'Meet locked' : 'Meet unlocked',
+                 type: next === 'locked' ? 'warn' : 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Could not change lock state: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
+
+    // ── Export DQs ────────────────────────────────────────────────────────────────
+    document.getElementById('export-btn').addEventListener('click', async () => {
+      const res = await window.agent.exportDqs();
+      if (!res || res.canceled) return;
+      if (res.success) {
+        addLog({ msg: `Exported ${res.count} DQ${res.count === 1 ? '' : 's'} → ${res.filePath}`, type: 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Export DQs failed: ${res.error || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
+
+    // ── Codeset selector ───────────────────────────────────────────────────────────
+    let codesets = [];
+    let currentCodesetId = null;
+    const csOpts = Array.from(document.querySelectorAll('.cs-opt'));
+
+    async function loadCodesets() {
+      const res = await window.agent.getCodesets();
+      if (!res || !res.success) return;
+      codesets = res.codesets || [];
+      currentCodesetId = res.currentCodesetId || null;
+      renderCodeset();
+    }
+    function csIdByName(name) {
+      const c = codesets.find((x) => (x.name || '').trim() === name);
+      return c ? c.id : null;
+    }
+    function renderCodeset() {
+      const cur = codesets.find((c) => c.id === currentCodesetId);
+      const curName = (cur && cur.name ? cur.name : '').trim();
+      csOpts.forEach((btn) => btn.classList.toggle('selected', btn.dataset.csName === curName));
+    }
+    csOpts.forEach((btn) => btn.addEventListener('click', async () => {
+      const id = csIdByName(btn.dataset.csName);
+      if (!id) { addLog({ msg: `Codeset "${btn.dataset.csName}" not available`, type: 'warn', time: nowTime() }); return; }
+      const res = await window.agent.setCodeset(id);
+      if (res && res.success) {
+        currentCodesetId = id;
+        renderCodeset();
+        addLog({ msg: `Codeset set to ${btn.dataset.csName}`, type: 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Could not change codeset: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    }));
 
     // ── Navigation: Admin ↔ Main ────────────────────────────────────────────────
     document.getElementById('admin-btn').addEventListener('click', () => showScreen('admin'));
@@ -1037,8 +1122,7 @@
       }
     });
 
-    // ── Simulator Mode (synced across main + admin) ──────────────────────────────
-    const simToggle      = document.getElementById('sim-toggle');
+    // ── Simulator Mode (Admin → Developer tools only) ────────────────────────────
     const simToggleAdmin = document.getElementById('sim-toggle-admin');
     const simPanel       = document.getElementById('sim-panel');
     const simState       = document.getElementById('sim-state');
@@ -1048,6 +1132,7 @@
     const simHeatInput   = document.getElementById('sim-heat-input');
     const simGoBtn       = document.getElementById('sim-go-btn');
     const connSim        = document.getElementById('conn-sim');
+    const simBanner      = document.getElementById('sim-banner');
 
     function renderSimState(state) {
       if (state && state.currentEvent != null) {
@@ -1062,14 +1147,20 @@
       } else {
         await window.agent.stopSimulator();
       }
-      simToggle.checked = on;
       simToggleAdmin.checked = on;
       simPanel.style.display = on ? 'block' : 'none';
-      connSim.style.display = on ? 'inline' : 'none';
+      // Make it impossible to miss that the live timing file is being overridden.
+      connSim.style.display  = on ? 'inline' : 'none';
+      simBanner.style.display = on ? 'block' : 'none';
     }
 
-    simToggle.addEventListener('change', () => setSimulator(simToggle.checked));
-    simToggleAdmin.addEventListener('change', () => setSimulator(simToggleAdmin.checked));
+    simToggleAdmin.addEventListener('change', async () => {
+      if (simToggleAdmin.checked) {
+        const ok = confirm('Simulator mode will override the timing file and auto-advance heats. Only use for testing.');
+        if (!ok) { simToggleAdmin.checked = false; return; }
+      }
+      await setSimulator(simToggleAdmin.checked);
+    });
     simNextBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorNext()));
     simPrevBtn.addEventListener('click', async () => renderSimState(await window.agent.simulatorPrev()));
     simGoBtn.addEventListener('click', async () => {

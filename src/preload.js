@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld("agent", {
   updateMeetFile: () => ipcRenderer.invoke("update-meet-file"),
   disconnectMeet: () => ipcRenderer.invoke("disconnect-meet"),
 
+  // Admin: lock/unlock, codeset, export DQs
+  setMeetStatus: (status) => ipcRenderer.invoke("set-meet-status", status),
+  getCodesets: () => ipcRenderer.invoke("get-codesets"),
+  setCodeset: (codesetId) => ipcRenderer.invoke("set-codeset", codesetId),
+  exportDqs: () => ipcRenderer.invoke("export-dqs"),
+
   // New Meet Setup Wizard
   wizardSelectMeetDetails: () => ipcRenderer.invoke("wizard-select-meet-details"),
   wizardSelectTimingConfig: () => ipcRenderer.invoke("wizard-select-timing-config"),
