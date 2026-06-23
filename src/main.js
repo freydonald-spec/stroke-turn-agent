@@ -253,8 +253,13 @@ function debouncedChange() {
   debounceTimer = setTimeout(handleChange, DEBOUNCE_MS);
 }
 
-function startWatcher(filePath) {
+// Stop the file watcher if one is running. Safe to call when none is active.
+function stopWatcher() {
   if (watcher) { watcher.close(); watcher = null; }
+}
+
+function startWatcher(filePath) {
+  stopWatcher();
   watchFile = filePath;
   log(`👁️ Watching: ${path.basename(filePath)}`);
   handleChange(); // read current state immediately
@@ -634,11 +639,17 @@ function buildDqReportCsv(eventLabelMap, dqs) {
 ipcMain.handle("simulator-start", () => {
   const filePath = simulator.startSimulator();
   simulatorMode = true;
-  // Remember the real timing file (if any) so it can be restored on stop.
-  priorWatchFile = loadSettings().watchFile ?? null;
+  // Remember the real timing file currently being watched so it can be resumed
+  // on stop — prefer the live target, fall back to the saved path.
+  priorWatchFile = watchFile ?? loadSettings().watchFile ?? null;
+  const wasWatchingTimingFile = !!watcher;
   log(`🎮 Simulator started → ${path.basename(filePath)}`, "success");
-  // Begin watching the simulated file immediately (no settings persistence —
-  // the file is ephemeral and removed on stop).
+  // Pause the real timing-file watcher automatically: pointing the watcher at
+  // the ephemeral simulated file stops the real timing file from being read.
+  // The simulator drives the change → push pipeline through that file instead.
+  if (wasWatchingTimingFile) {
+    log("⏸️ Timing file watcher paused — simulator active", "warn");
+  }
   startWatcher(filePath);
   return filePath;
 });
@@ -646,11 +657,11 @@ ipcMain.handle("simulator-start", () => {
 ipcMain.handle("simulator-stop", () => {
   simulator.stopSimulator();
   simulatorMode = false;
-  if (watcher) { watcher.close(); watcher = null; }
+  stopWatcher();
   watchFile = null;
   log("🛑 Simulator stopped", "warn");
-  // Restore the real timing file that was being watched before simulator mode,
-  // if one existed and still exists on disk.
+  // Resume watching the real timing file that was configured before simulator
+  // mode, if one existed and still exists on disk.
   if (priorWatchFile) {
     const restore = priorWatchFile;
     priorWatchFile = null;
@@ -660,6 +671,7 @@ ipcMain.handle("simulator-stop", () => {
     if (fs.existsSync(restore)) {
       log(`📁 Restored timing file: ${path.basename(restore)}`, "success");
       startWatcher(restore);
+      log("▶️ Timing file watcher resumed — simulator deactivated", "success");
     } else {
       watchFile = restore;
       log(`⚠️ Saved timing file not found: ${path.basename(restore)}`, "warn");
