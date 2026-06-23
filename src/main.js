@@ -86,6 +86,10 @@ let priorWatchFile = null; // real timing file watched before simulator mode sta
 let wizardParsed = null;        // parsed meet_details.json
 let wizardTimingFile = null;    // path to the selected timing_system_configuration.json
 
+// Auto-update flow state — drives the full-screen update overlay.
+let updateFlowActive = false;   // true once an update is found (download/install underway)
+let installTriggered = false;   // guards against double quitAndInstall
+
 // ── Logging ───────────────────────────────────────────────────────────────────
 
 function log(msg, type = "info") {
@@ -104,6 +108,16 @@ function sendStatus(status) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("update-status", status);
     }
+  }
+}
+
+// Drive the renderer's full-screen update overlay. Payload shape:
+//   { phase: "checking"|"available"|"downloading"|"downloaded"|"installing"
+//            |"restarting"|"restart-fallback"|"error"|"hide",
+//     version?, percent?, message? }
+function sendUpdateUI(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("update-ui", payload);
   }
 }
 
@@ -587,6 +601,26 @@ function clearUpdateCache() {
   }
 }
 
+// Quit and install a downloaded update. Mirrors the prior manual-restart path:
+// mark the disconnect as already handled and tear down the tray so the
+// before-quit Firestore write doesn't block/delay the install, then hand off to
+// electron-updater. Used by both the automatic install and the fallback button.
+function doQuitAndInstall() {
+  sendUpdateUI({ phase: "restarting" });
+  writingDisconnect = true;
+  if (tray) { try { tray.destroy(); } catch { /* noop */ } }
+  try {
+    autoUpdater.quitAndInstall();
+  } catch (err) {
+    log(`❌ Could not start installer: ${err.message}`, "error");
+    sendUpdateUI({ phase: "restart-fallback" });
+  }
+}
+
+// Manual restart fallback — fired by the overlay's "Restart now" button if the
+// automatic quitAndInstall didn't take within 5s.
+ipcMain.handle("restart-now", () => { doQuitAndInstall(); return true; });
+
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
@@ -621,70 +655,69 @@ app.whenReady().then(async () => {
 
   // Check for updates 3 seconds after startup (give app time to load)
   setTimeout(() => {
+    sendUpdateUI({ phase: "checking" });
     autoUpdater.checkForUpdates().catch((err) => {
       log(`⚠️ Update check failed: ${err.message}`, "warn");
+      // Don't strand the overlay on a failed check when no update is in flight.
+      if (!updateFlowActive) sendUpdateUI({ phase: "hide" });
     });
   }, 3000);
 
-  // Update available — prompt the user before downloading
+  // Update available — show the overlay and download automatically (no manual
+  // confirmation). Progress streams to the overlay via download-progress.
   autoUpdater.on("update-available", (info) => {
     log(`🔄 Update available: v${info.version}`, "warn");
-    const { dialog } = require("electron");
-    dialog.showMessageBox(mainWindow, {
-      type: "info",
-      title: "Update Available",
-      message: `DQSync Agent v${info.version} is available.`,
-      detail: "Download and install now? The app will restart.",
-      buttons: ["Download & Install", "Later"],
-      defaultId: 0
-    }).then(({ response }) => {
-      if (response === 0) {
-        clearUpdateCache();
-        autoUpdater.downloadUpdate();
-      }
+    updateFlowActive = true;
+    sendUpdateUI({ phase: "available", version: info.version });
+    clearUpdateCache();
+    autoUpdater.downloadUpdate().catch((err) => {
+      log(`❌ Update download failed: ${err.message}`, "error");
+      sendUpdateUI({ phase: "error", message: err.message });
     });
   });
 
-  // No update available
+  // No update available — hide the overlay if it was only showing "Checking…".
   autoUpdater.on("update-not-available", () => {
     log(`✅ DQSync Agent is up to date (v${app.getVersion()})`, "success");
+    if (!updateFlowActive) sendUpdateUI({ phase: "hide" });
   });
 
-  // Download progress
+  // Download progress — fill the overlay's progress bar.
   autoUpdater.on("download-progress", (progress) => {
-    log(`⬇️ Downloading update: ${Math.round(progress.percent)}%`);
+    const percent = Math.round(progress.percent);
+    log(`⬇️ Downloading update: ${percent}%`);
+    sendUpdateUI({ phase: "downloading", percent });
   });
 
-  // Update downloaded — prompt user to restart
+  // Update downloaded — auto-install and restart, no waiting for a click.
   autoUpdater.on("update-downloaded", (info) => {
-    log(`✅ Update v${info.version} downloaded — will install on restart`, "success");
-    sendStatus({ type: "update-ready", msg: `v${info.version} ready — restart to update` });
-    // Show a dialog asking user to restart
-    const { dialog } = require("electron");
-    dialog.showMessageBox(mainWindow, {
-      type: "info",
-      title: "Update Ready",
-      message: `DQSync Agent v${info.version} is ready to install.`,
-      detail: "Restart now to apply the update.",
-      buttons: ["Restart Now", "Later"],
-      defaultId: 0,
-    }).then(({ response }) => {
-      if (response === 0) {
-        // Exit immediately so the new installer doesn't see us still running
-        // (the before-quit disconnect write would otherwise delay/block the
-        // quit and trigger "app cannot be closed"). The new installer also
-        // force-kills us via customCheckAppRunning as a backstop.
-        writingDisconnect = true;
-        if (tray) { try { tray.destroy(); } catch { /* noop */ } }
-        autoUpdater.quitAndInstall();
-      }
-    });
+    log(`✅ Update v${info.version} downloaded — installing`, "success");
+    sendStatus({ type: "update-ready", msg: `v${info.version} ready — restarting` });
+    sendUpdateUI({ phase: "downloaded", version: info.version });
+    if (installTriggered) return;
+    installTriggered = true;
+    // Briefly show "Installing…" so the restart isn't an abrupt black screen,
+    // then quit into the installer. The new installer also force-kills us via
+    // customCheckAppRunning as a backstop.
+    setTimeout(() => {
+      sendUpdateUI({ phase: "installing", version: info.version });
+      doQuitAndInstall();
+    }, 1000);
+    // Fallback: if we're still alive ~5s after attempting the install, the
+    // automatic restart didn't take — surface a manual "Restart now" button.
+    setTimeout(() => {
+      sendUpdateUI({ phase: "restart-fallback", version: info.version });
+    }, 6000);
   });
 
   autoUpdater.on("error", (err) => {
     log(`❌ Update error: ${err.message}`, "error");
     // Clear staging so a retry starts clean (handles EPERM/locked-file leftovers).
     clearUpdateCache();
+    // Only surface the error overlay if an update was actually in flight;
+    // otherwise a routine failed check would needlessly cover the app.
+    if (updateFlowActive) sendUpdateUI({ phase: "error", message: err.message });
+    else sendUpdateUI({ phase: "hide" });
   });
 
   if (!initDb()) return;

@@ -306,9 +306,123 @@
       animation: spin 0.8s linear infinite; margin: 24px auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Auto-update overlay ── */
+    #update-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #0a1628;
+      color: #e2e8f0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 32px;
+      text-align: center;
+    }
+    #update-overlay.visible { display: flex; }
+    .upd-logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+    .upd-logo span { color: #00c2e0; }
+    .upd-logo .sub {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-top: 4px;
+    }
+    .upd-title {
+      margin-top: 36px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+    }
+    #upd-spinner {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid #16233f;
+      border-top-color: #00c2e0;
+      animation: spin 0.8s linear infinite;
+      margin: 22px auto 0;
+    }
+    #upd-spinner.hidden { display: none; }
+    .upd-status {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      min-height: 22px;
+    }
+    .upd-bar {
+      width: 100%;
+      max-width: 300px;
+      height: 8px;
+      margin: 18px auto 0;
+      background: #0f2040;
+      border: 1px solid #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .upd-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #00c2e0;
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+    .upd-version {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #64748b;
+      max-width: 320px;
+      word-break: break-word;
+    }
+    #upd-btn {
+      margin-top: 24px;
+      padding: 11px 24px;
+      background: #00c2e0;
+      color: #0a1628;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #upd-btn:hover { background: #00d4f5; }
+    #upd-btn.ghost {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    #upd-btn.ghost:hover { border-color: #64748b; color: #e2e8f0; }
   </style>
 </head>
 <body>
+
+  <!-- ── Auto-update overlay (covers the app while updating) ──────────────── -->
+  <div id="update-overlay">
+    <div class="upd-logo">DQ<span>Sync</span><span class="sub">Agent</span></div>
+    <div class="upd-title">DQSync Update</div>
+    <div id="upd-spinner"></div>
+    <div class="upd-status" id="upd-status">Checking for updates…</div>
+    <div class="upd-bar" id="upd-bar" style="display:none;">
+      <div class="upd-bar-fill" id="upd-bar-fill"></div>
+    </div>
+    <div class="upd-version" id="upd-version"></div>
+    <button id="upd-btn" style="display:none;"></button>
+  </div>
 
   <header>
     <h1>DQSync Agent</h1>
@@ -629,6 +743,89 @@
       if (el) {
         el.textContent = data.msg;
         el.style.display = 'block';
+      }
+    });
+
+    // ── Full-screen update overlay ─────────────────────────────────────────────
+
+    const updOverlay = document.getElementById('update-overlay');
+    const updSpinner = document.getElementById('upd-spinner');
+    const updStatus  = document.getElementById('upd-status');
+    const updBar     = document.getElementById('upd-bar');
+    const updBarFill = document.getElementById('upd-bar-fill');
+    const updVersion = document.getElementById('upd-version');
+    const updBtn     = document.getElementById('upd-btn');
+
+    function showUpdate()  { updOverlay.classList.add('visible'); }
+    function hideUpdate()  { updOverlay.classList.remove('visible'); }
+    function setSpinner(on) { updSpinner.classList.toggle('hidden', !on); }
+    function setBar(show, percent) {
+      updBar.style.display = show ? 'block' : 'none';
+      if (typeof percent === 'number') updBarFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    }
+    function setButton(label, kind, handler) {
+      if (!label) { updBtn.style.display = 'none'; updBtn.onclick = null; return; }
+      updBtn.textContent = label;
+      updBtn.className = kind === 'ghost' ? 'ghost' : '';
+      updBtn.onclick = handler;
+      updBtn.style.display = 'inline-block';
+    }
+
+    window.agent.onUpdateUI((d) => {
+      const v = d.version ? `v${d.version}` : '';
+      switch (d.phase) {
+        case 'checking':
+          showUpdate(); setSpinner(true);
+          updStatus.textContent = 'Checking for updates…';
+          setBar(false); updVersion.textContent = ''; setButton(null);
+          break;
+        case 'available':
+          showUpdate(); setSpinner(true);
+          updStatus.textContent = `Update available — ${v}`;
+          setBar(false); updVersion.textContent = 'Starting download…'; setButton(null);
+          break;
+        case 'downloading':
+          showUpdate(); setSpinner(false);
+          updStatus.textContent = `Downloading update… ${d.percent ?? 0}%`;
+          setBar(true, d.percent ?? 0); updVersion.textContent = ''; setButton(null);
+          break;
+        case 'downloaded':
+          showUpdate(); setSpinner(true);
+          updStatus.textContent = 'Download complete';
+          setBar(true, 100); updVersion.textContent = ''; setButton(null);
+          break;
+        case 'installing':
+          showUpdate(); setSpinner(true);
+          updStatus.textContent = 'Installing update…';
+          setBar(false); updVersion.textContent = v ? `Applying ${v}` : ''; setButton(null);
+          break;
+        case 'restarting':
+          showUpdate(); setSpinner(true);
+          updStatus.textContent = 'Restarting…';
+          setBar(false); updVersion.textContent = ''; setButton(null);
+          break;
+        case 'restart-fallback':
+          showUpdate(); setSpinner(false);
+          updStatus.textContent = 'Update ready';
+          setBar(false);
+          updVersion.textContent = 'Almost there — tap to finish installing.';
+          setButton('Restart now', 'primary', () => {
+            updStatus.textContent = 'Restarting…';
+            setSpinner(true); setButton(null);
+            window.agent.restartNow();
+          });
+          break;
+        case 'error':
+          showUpdate(); setSpinner(false);
+          updStatus.textContent = 'Update failed';
+          setBar(false);
+          updVersion.textContent = d.message || 'Could not complete the update.';
+          setButton('Continue without updating', 'ghost', hideUpdate);
+          break;
+        case 'hide':
+        default:
+          hideUpdate();
+          break;
       }
     });
 

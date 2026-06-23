@@ -40,4 +40,8 @@ contextBridge.exposeInMainWorld("agent", {
 
   // Listen for auto-update status
   onUpdate: (callback) => ipcRenderer.on("update-status", (_event, data) => callback(data)),
+
+  // Full-screen update overlay: progress messages + manual restart fallback
+  onUpdateUI: (callback) => ipcRenderer.on("update-ui", (_event, data) => callback(data)),
+  restartNow: () => ipcRenderer.invoke("restart-now"),
 });
