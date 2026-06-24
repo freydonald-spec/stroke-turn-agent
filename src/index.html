@@ -221,6 +221,48 @@
     .cs-opt:hover { border-color: rgba(0,194,224,0.4); }
     .cs-opt.selected { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #fff; }
 
+    /* ── Zone config ── */
+    .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .zone-card {
+      text-align: left; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #1e293b; background: #0a1628; color: #cbd5e1;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .zone-card:hover { border-color: rgba(0,194,224,0.4); }
+    .zone-card.selected { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #fff; }
+    .zone-card.custom { grid-column: 1 / -1; }
+    .zone-card .zc-label { font-size: 13px; font-weight: 600; }
+    .zone-card .zc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .zone-chip {
+      font-size: 9px; background: #1e293b; color: #94a3b8;
+      border-radius: 4px; padding: 1px 6px;
+    }
+    .zone-card.selected .zone-chip { background: rgba(0,194,224,0.2); color: #cbd5e1; }
+    .zc-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      background: #0a1628; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 7px 12px; margin-bottom: 6px; font-size: 13px; color: #e2e8f0;
+    }
+    .zc-row button {
+      background: none; border: none; color: #475569; font-size: 18px; line-height: 1;
+      cursor: pointer; padding: 0 2px;
+    }
+    .zc-row button:hover { color: #f87171; }
+    .zc-add { display: flex; gap: 8px; margin-top: 8px; }
+    .zc-add input {
+      flex: 1; min-width: 0; padding: 8px 12px; background: #0a1628;
+      border: 1px solid #1e293b; border-radius: 8px; color: #fff; font-size: 13px;
+      outline: none; font-family: inherit;
+    }
+    .zc-add input:focus { border-color: #00c2e0; }
+    .zc-add button {
+      flex-shrink: 0; padding: 8px 14px; border-radius: 8px; border: 1px solid #334155;
+      background: transparent; color: #94a3b8; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .zc-add button:hover { border-color: #64748b; color: #e2e8f0; }
+    #zone-saved { font-size: 11px; color: #34d399; margin-top: 8px; display: none; }
+
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -468,7 +510,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.27</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.28</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -592,6 +634,24 @@
         </span>
         <span class="ai-text">Disconnect meet<div class="ai-sub">Stop watching &amp; return to launch — meet stays intact</div></span>
       </button>
+
+      <!-- Zones -->
+      <div class="section-label" style="margin-top:20px;">Zones</div>
+      <div class="admin-card">
+        <p style="font-size:11px;color:#64748b;margin:0 0 10px;line-height:1.4;">
+          Where S&amp;T judges &amp; referees stand. Officials pick their zone on join.
+        </p>
+        <div class="zone-grid" id="zone-grid"></div>
+        <div id="zone-custom" style="display:none;margin-top:12px;">
+          <div id="zone-custom-list"></div>
+          <div class="zc-add">
+            <input id="zone-custom-input" type="text" placeholder="e.g. Turn side · Lanes 1-3" />
+            <button id="zone-custom-add" type="button">Add</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="zone-save" style="margin-top:12px;">Save zones</button>
+        <div id="zone-saved">Saved ✓</div>
+      </div>
 
       <!-- Developer tools -->
       <div class="section-label" style="margin-top:20px;">Developer tools</div>
@@ -838,6 +898,7 @@
       }
       renderLockState();
       loadCodesets();
+      loadZones();
       showScreen('main');
     }
 
@@ -949,6 +1010,106 @@
         addLog({ msg: `Could not change codeset: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
       }
     }));
+
+    // ── Zone config (mirrors the web app's referee admin; zones are string[]) ─────
+    const ZONE_TEMPLATES = [
+      { id: 'none',         label: 'No Zones',      zones: [] },
+      { id: 'start-turns',  label: 'Start & Turns', zones: ['Start', 'Turns'] },
+      { id: 'turns-finish', label: 'Turns & Finish', zones: ['Turns', 'Finish'] },
+      { id: 'lane-split',   label: 'Lane Split',    zones: ['Turns 1-3', 'Turns 4-6', 'Start 1-3', 'Start 4-6'] },
+    ];
+    function matchZoneTemplate(zones) {
+      const target = new Set(zones);
+      for (const t of ZONE_TEMPLATES) {
+        if (t.zones.length === target.size && t.zones.every((z) => target.has(z))) return t.id;
+      }
+      return 'custom';
+    }
+
+    const zoneGrid       = document.getElementById('zone-grid');
+    const zoneCustom     = document.getElementById('zone-custom');
+    const zoneCustomList = document.getElementById('zone-custom-list');
+    const zoneCustomInput = document.getElementById('zone-custom-input');
+    const zoneSaved      = document.getElementById('zone-saved');
+
+    let workingZones = [];          // the string[] being edited
+    let zoneSelection = 'none';     // template id or 'custom'
+
+    function loadZones() {
+      workingZones = Array.isArray(currentMeetInfo && currentMeetInfo.zones) ? [...currentMeetInfo.zones] : [];
+      zoneSelection = matchZoneTemplate(workingZones);
+      renderZones();
+    }
+
+    function renderZones() {
+      // Option cards: the 4 templates + Custom.
+      const opts = [...ZONE_TEMPLATES, { id: 'custom', label: 'Custom', zones: null }];
+      zoneGrid.innerHTML = opts.map((o) => {
+        const selected = zoneSelection === o.id;
+        const chips = o.id === 'custom'
+          ? `<div class="zc-chips"><span class="zone-chip">Your own labels</span></div>`
+          : (o.zones.length === 0
+              ? `<div class="zc-chips"><span class="zone-chip">No zone picker</span></div>`
+              : `<div class="zc-chips">${o.zones.map((z) => `<span class="zone-chip">${escapeHtml(z)}</span>`).join('')}</div>`);
+        return `<button type="button" class="zone-card${o.id === 'custom' ? ' custom' : ''}${selected ? ' selected' : ''}" data-zone-id="${o.id}">
+          <div class="zc-label">${escapeHtml(o.label)}</div>${chips}
+        </button>`;
+      }).join('');
+      zoneGrid.querySelectorAll('.zone-card').forEach((btn) => {
+        btn.addEventListener('click', () => selectZoneOption(btn.dataset.zoneId));
+      });
+
+      // Custom editor.
+      zoneCustom.style.display = zoneSelection === 'custom' ? 'block' : 'none';
+      if (zoneSelection === 'custom') {
+        zoneCustomList.innerHTML = workingZones.length === 0
+          ? `<p style="font-size:12px;color:#475569;">No zones yet — add one below.</p>`
+          : workingZones.map((z, i) =>
+              `<div class="zc-row"><span>${escapeHtml(z)}</span><button type="button" data-zone-rm="${i}" aria-label="Remove">×</button></div>`).join('');
+        zoneCustomList.querySelectorAll('[data-zone-rm]').forEach((b) => {
+          b.addEventListener('click', () => {
+            workingZones.splice(Number(b.dataset.zoneRm), 1);
+            renderZones();
+          });
+        });
+      }
+      zoneSaved.style.display = 'none';
+    }
+
+    function selectZoneOption(id) {
+      if (id === 'custom') {
+        zoneSelection = 'custom';
+      } else {
+        const t = ZONE_TEMPLATES.find((x) => x.id === id);
+        workingZones = t ? [...t.zones] : [];
+        zoneSelection = id;
+      }
+      renderZones();
+    }
+
+    function addCustomZone() {
+      const z = zoneCustomInput.value.trim();
+      if (!z || workingZones.includes(z)) { zoneCustomInput.value = ''; return; }
+      workingZones.push(z);
+      zoneCustomInput.value = '';
+      renderZones();
+    }
+    document.getElementById('zone-custom-add').addEventListener('click', addCustomZone);
+    zoneCustomInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomZone(); } });
+
+    document.getElementById('zone-save').addEventListener('click', async () => {
+      const res = await window.agent.setZones(workingZones);
+      if (res && res.success) {
+        workingZones = res.zones || [];
+        if (currentMeetInfo) currentMeetInfo.zones = [...workingZones];
+        zoneSelection = matchZoneTemplate(workingZones);
+        renderZones();
+        zoneSaved.style.display = 'block';
+        addLog({ msg: `Zones updated — ${workingZones.length === 0 ? 'none' : workingZones.join(' · ')}`, type: 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Could not update zones: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
 
     // ── Navigation: Admin ↔ Main ────────────────────────────────────────────────
     document.getElementById('admin-btn').addEventListener('click', () => showScreen('admin'));
@@ -1402,7 +1563,6 @@
     // ── On load: restore saved settings ──────────────────────────────────────
     window.agent.getSettings().then((settings) => {
       if (settings.watchFile) setTimingFile(settings.watchFile);
-      if (settings.savedPin) fillPinBoxes(settings.savedPin);
       pinBoxes[0].focus();
     });
   </script>

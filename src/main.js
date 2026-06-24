@@ -305,6 +305,9 @@ async function buildMeetInfo(data) {
     currentStroke: data.currentStroke ?? null,
     status:        data.status ?? "active",
     codesetId:     data.codesetId ?? null,
+    zones:         Array.isArray(data.zones)
+      ? data.zones.filter((z) => typeof z === "string" && z.trim())
+      : [],
   };
 }
 
@@ -328,9 +331,6 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     log(`✅ Connected to: ${meetName}`, 'success');
     sendStatus({ type: 'connected', meetName });
     startHeartbeat();
-    const settings = loadSettings();
-    settings.savedPin = pin;
-    saveSettings(settings);
     if (watchFile && fs.existsSync(watchFile)) {
       startWatcher(watchFile);
     }
@@ -489,6 +489,25 @@ ipcMain.handle('set-codeset', async (_event, codesetId) => {
     return { success: true, codesetId };
   } catch (err) {
     log(`❌ Could not change codeset: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Zones": write meets/{meetId}.zones as a plain string[] — the exact
+// field + shape the web app uses (see lib/zoneTemplates.ts). Officials read
+// zones on join (zone picker) and the CJ page filters by them.
+ipcMain.handle('set-zones', async (_event, zones) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  // Normalize: trimmed, non-empty, de-duplicated strings.
+  const clean = Array.isArray(zones)
+    ? zones.map((z) => String(z).trim()).filter((z, i, arr) => z && arr.indexOf(z) === i)
+    : [];
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { zones: clean });
+    log(`🗺️ Zones updated — ${clean.length === 0 ? "none" : clean.join(" · ")}`, "success");
+    return { success: true, zones: clean };
+  } catch (err) {
+    log(`❌ Could not update zones: ${err.message}`, "error");
     return { success: false, error: err.message };
   }
 });
@@ -779,11 +798,12 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
     sendStatus({ type: "connected", meetName: created.meetName });
     startHeartbeat();
 
-    // Persist the meet PIN so a relaunch reconnects, mirroring connect-by-pin.
-    const settings = loadSettings();
-    settings.savedPin = created.pin;
-    if (wizardTimingFile) settings.watchFile = wizardTimingFile;
-    saveSettings(settings);
+    // Persist the timing file path so the watcher resumes on relaunch.
+    if (wizardTimingFile) {
+      const settings = loadSettings();
+      settings.watchFile = wizardTimingFile;
+      saveSettings(settings);
+    }
 
     // Build QR codes pointing at the correct public route for each credential:
     // officials + admin/scorekeeper → /join, coaches → /coach (see wizard.js).

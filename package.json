@@ -1,6 +1,6 @@
 {
   "name": "dqsync-agent",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "DQSync Agent — automatic heat advancement from Meet Maestro",
   "author": "Stroke & Turn",
   "main": "src/main.js",
@@ -8,7 +8,8 @@
     "start": "electron .",
     "generate-tray-icon": "node scripts/generate-tray-icon.js",
     "build": "npm run generate-tray-icon && electron-builder --win --x64",
-    "build-mac": "electron-builder --mac"
+    "build-mac": "electron-builder --mac",
+    "build:mac": "electron-builder --mac"
   },
   "dependencies": {
     "chokidar": "^3.6.0",
@@ -23,12 +24,17 @@
   "build": {
     "appId": "com.dqsync.agent",
     "productName": "DQSync Agent",
-    "icon": "build/icon.ico",
     "win": {
+      "icon": "build/icon.ico",
       "target": "nsis",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "DQSync-Agent-Setup.exe",
       "sign": null
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.sports",
+      "identity": null
     },
     "nsis": {
       "oneClick": true,

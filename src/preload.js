@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("agent", {
   setMeetStatus: (status) => ipcRenderer.invoke("set-meet-status", status),
   getCodesets: () => ipcRenderer.invoke("get-codesets"),
   setCodeset: (codesetId) => ipcRenderer.invoke("set-codeset", codesetId),
+  setZones: (zones) => ipcRenderer.invoke("set-zones", zones),
   exportDqs: () => ipcRenderer.invoke("export-dqs"),
 
   // New Meet Setup Wizard
