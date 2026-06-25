@@ -619,7 +619,9 @@ function buildDqReportText(meetData, eventLabelMap, dqs) {
   for (const dq of rows) {
     const label = eventLabelMap.get(Number(dq.eventNumber));
     lines.push(`Event ${dq.eventNumber ?? "—"} · Heat ${dq.heatNumber ?? "—"}${label ? ` · ${label}` : ""}`);
-    lines.push(`Lane ${dq.laneNumber} · ${dq.swimmerName ?? "—"}`);
+    const team = (dq.teamAbbreviation ?? "").toString().trim();
+    const swimmer = `${dq.swimmerName ?? "—"}${team ? ` · ${team}` : ""}`;
+    lines.push(`Lane ${dq.laneNumber} · ${swimmer}`);
     lines.push(`Code: ${dqCodeDisplay(dq)} — ${dq.infractionDescription}`);
     lines.push(`Status: ${reportStatusLabel(dq.status)}`);
     lines.push(sep);
