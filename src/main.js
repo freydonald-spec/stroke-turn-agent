@@ -15,6 +15,7 @@ const {
   getDoc,
   onSnapshot,
   updateDoc,
+  setDoc,
   getDocs,
   collection,
   query,
@@ -156,7 +157,7 @@ async function getStroke(eventNumber) {
   return null;
 }
 
-async function pushUpdate(currentEvent, currentHeat) {
+async function pushUpdate(currentEvent, currentHeat, prevEvent = null, prevHeat = null) {
   try {
     const stroke = await getStroke(currentEvent);
     await updateDoc(doc(db, "meets", meetId), {
@@ -170,6 +171,107 @@ async function pushUpdate(currentEvent, currentHeat) {
   } catch (err) {
     log(`❌ Failed to push: ${err.message}`, "error");
     writeAgentError(`Push failed: ${err.message}`);
+  }
+
+  // The heat just advanced, so the previous heat has finished and Time Drops has
+  // written its result file. Read + push it. Best-effort: a missing/unreadable
+  // result file is non-fatal and never disrupts the live meet.
+  await pushPrevHeatResults(prevEvent, prevHeat);
+}
+
+// ── Time Drops result files ─────────────────────────────────────────────────
+// When the timing file's currentEvent/currentHeat advance, Time Drops has
+// already written a result file for the heat that just finished into the same
+// folder as timing_system_configuration.json, named:
+//   session_{session}_event_{event}_heat_{heat}_race_{race}_1.json
+// We read that file for the PREVIOUS heat and push it to meets/{id}/results.
+
+// Locate the result file for a finished heat in the timing file's directory.
+// Returns the absolute path, or null if no matching file exists.
+async function findResultFile(dir, eventNumber, heatNumber) {
+  // Anchor on numeric boundaries so event_9 doesn't match event_19 (etc.).
+  const re = new RegExp(
+    `^session_(\\d+)_event_${eventNumber}_heat_${heatNumber}_race_(\\d+)_1\\.json$`,
+    "i",
+  );
+  let names;
+  try {
+    names = await fs.promises.readdir(dir);
+  } catch {
+    return null;
+  }
+  const match = names.find((n) => re.test(n));
+  return match ? path.join(dir, match) : null;
+}
+
+// Map a raw Time Drops result lane to the stored shape. Empty lanes carry only
+// their number; swum lanes carry the times (and a DQ flag when the timer set it).
+function mapResultLane(lane) {
+  const laneNumber = Number(lane.lane);
+  if (lane.isEmpty) {
+    return { lane: laneNumber, isEmpty: true };
+  }
+  return {
+    lane: laneNumber,
+    finalTime: lane.finalTime ?? null,
+    timer1: lane.timer1 ?? null,
+    timer2: lane.timer2 ?? null,
+    isEmpty: false,
+    ...(lane.isDq ? { isDq: true } : {}),
+  };
+}
+
+// Read the result file for the heat that just finished and push it to Firestore.
+// Entirely best-effort — guarded so it only runs for a real, connected, live meet.
+async function pushPrevHeatResults(prevEvent, prevHeat) {
+  // Only when connected, watching a real timing file, and not simulating. There
+  // is also no previous heat on the very first read after connect (nulls).
+  if (!meetId || !watchFile || simulatorMode) return;
+  if (prevEvent == null || prevHeat == null) return;
+
+  const dir = path.dirname(watchFile);
+  const filePath = await findResultFile(dir, prevEvent, prevHeat);
+  if (!filePath) {
+    log(`⚠️ No result file found for E${prevEvent} H${prevHeat} — skipping`, "warn");
+    return;
+  }
+
+  let json;
+  try {
+    json = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (err) {
+    log(`⚠️ Could not read result file for E${prevEvent} H${prevHeat}: ${err.message}`, "warn");
+    return;
+  }
+
+  // sessionNumber: prefer the file's own field, fall back to the filename.
+  let sessionNumber = json.sessionNumber != null ? Number(json.sessionNumber) : null;
+  if (sessionNumber == null) {
+    const m = path.basename(filePath).match(/^session_(\d+)_/);
+    if (m) sessionNumber = Number(m[1]);
+  }
+
+  const lanes = (Array.isArray(json.lanes) ? json.lanes : []).map(mapResultLane);
+
+  const result = {
+    eventNumber: String(prevEvent),
+    heatNumber: Number(prevHeat),
+    sessionNumber,
+    startTime: json.startTime ?? null,
+    createdAt: json.createdAt ?? null,
+    lanes,
+    pushedAt: serverTimestamp(),
+  };
+
+  try {
+    await setDoc(
+      doc(db, "meets", meetId, "results", `${prevEvent}_${prevHeat}`),
+      result,
+      { merge: false },
+    );
+    log(`✅ Results pushed — E${prevEvent} H${prevHeat} (${lanes.length} lanes)`, "success");
+  } catch (err) {
+    log(`⚠️ Could not push results for E${prevEvent} H${prevHeat}: ${err.message}`, "warn");
   }
 }
 
@@ -242,10 +344,14 @@ async function handleChange() {
   if (!data) return;
   const { currentEvent, currentHeat } = data;
   if (currentEvent === lastEvent && currentHeat === lastHeat) return;
+  // Capture the heat that just finished BEFORE overwriting (null on the first
+  // read after connect — there's no previous heat to pull results for then).
+  const prevEvent = lastEvent;
+  const prevHeat  = lastHeat;
   lastEvent = currentEvent;
   lastHeat  = currentHeat;
   log(`📄 File changed → Event ${currentEvent} · Heat ${currentHeat}`);
-  await pushUpdate(currentEvent, currentHeat);
+  await pushUpdate(currentEvent, currentHeat, prevEvent, prevHeat);
 }
 
 function debouncedChange() {
