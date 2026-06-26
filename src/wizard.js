@@ -383,6 +383,12 @@ async function createMeet(db, parsed, opts = {}) {
   const coachWord = generateCoachWord();
   const codesetId = await findDefaultCodesetId(db);
 
+  // Time Drops / parent PIN: parents enter it at dqsync.app/parent to follow
+  // their swimmer's DQs. Optional — keep only an exactly-4-digit string, else null.
+  const timingSystemPin = /^\d{4}$/.test(String(opts.timingSystemPin ?? "").trim())
+    ? String(opts.timingSystemPin).trim()
+    : null;
+
   // ── 1. Meet doc (mirror of app/referee/create/page.tsx meetData) ──
   const meetData = {
     name: parsed.meetName || "Untitled Meet",
@@ -390,6 +396,9 @@ async function createMeet(db, parsed, opts = {}) {
     pin,
     adminPin,
     coachWord,
+    // Optional Time Drops / parent PIN (string "1234" or null). Same field the
+    // web app's parent view queries against.
+    timingSystemPin,
     status: "active",
     laneCount: parsed.laneCount > 0 ? parsed.laneCount : 6,
     // meetMode is the field every role page reads. meetType is written too to
@@ -441,7 +450,7 @@ async function createMeet(db, parsed, opts = {}) {
     await updateDoc(doc(db, "meets", meetId), meetUpdate);
   }
 
-  return { meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType };
+  return { meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType, timingSystemPin };
 }
 
 /**

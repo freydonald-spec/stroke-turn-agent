@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld("agent", {
 
   // Admin: lock/unlock, codeset, export DQs
   setMeetStatus: (status) => ipcRenderer.invoke("set-meet-status", status),
+  setTimingPin: (pin) => ipcRenderer.invoke("set-timing-pin", pin),
   getCodesets: () => ipcRenderer.invoke("get-codesets"),
   setCodeset: (codesetId) => ipcRenderer.invoke("set-codeset", codesetId),
   setZones: (zones) => ipcRenderer.invoke("set-zones", zones),
@@ -31,7 +32,7 @@ contextBridge.exposeInMainWorld("agent", {
   // New Meet Setup Wizard
   wizardSelectMeetDetails: () => ipcRenderer.invoke("wizard-select-meet-details"),
   wizardSelectTimingConfig: () => ipcRenderer.invoke("wizard-select-timing-config"),
-  wizardCreateMeet: (meetType) => ipcRenderer.invoke("wizard-create-meet", meetType),
+  wizardCreateMeet: (meetType, timingSystemPin) => ipcRenderer.invoke("wizard-create-meet", meetType, timingSystemPin),
   wizardStartWatching: () => ipcRenderer.invoke("wizard-start-watching"),
   copyToClipboard: (text) => ipcRenderer.invoke("copy-to-clipboard", text),
 

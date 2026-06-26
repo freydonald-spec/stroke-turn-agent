@@ -300,6 +300,7 @@ async function buildMeetInfo(data) {
   }
   return {
     meetName: name, pin, adminPin, coachWord, qr,
+    timingSystemPin: data.timingSystemPin ?? null,
     currentEvent:  data.currentEvent  ?? null,
     currentHeat:   data.currentHeat   ?? null,
     currentStroke: data.currentStroke ?? null,
@@ -455,6 +456,31 @@ ipcMain.handle('set-meet-status', async (_event, status) => {
     return { success: true, status };
   } catch (err) {
     log(`❌ Could not change meet status: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Parent PIN": set/clear the Time Drops PIN on the meet doc, in case
+// the scorekeeper forgot to enter it during setup. A blank value clears it
+// (null); anything else must be exactly 4 digits. Same timingSystemPin field
+// the web app's parent view queries against.
+ipcMain.handle('set-timing-pin', async (_event, pin) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  const raw = String(pin ?? '').replace(/\D/g, '');
+  let value;
+  if (raw.length === 0) {
+    value = null;
+  } else if (raw.length === 4) {
+    value = raw;
+  } else {
+    return { success: false, error: 'Parent PIN must be exactly 4 digits (or blank to clear).' };
+  }
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { timingSystemPin: value });
+    log(value ? `👪 Parent PIN set to ${value}` : "👪 Parent PIN cleared", "success");
+    return { success: true, timingSystemPin: value };
+  } catch (err) {
+    log(`❌ Could not change Parent PIN: ${err.message}`, "error");
     return { success: false, error: err.message };
   }
 });
@@ -779,7 +805,7 @@ ipcMain.handle("wizard-select-timing-config", async () => {
 // Step 4 → 5: create the meet from the parsed details + chosen meet type, then
 // "connect" the agent to it (set meetId, start heartbeat) exactly as a PIN
 // connect would. Returns the generated PINs + QR data URLs for the UI.
-ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
+ipcMain.handle("wizard-create-meet", async (_event, meetType, timingSystemPin) => {
   if (!wizardParsed) {
     return { success: false, error: "No meet details loaded. Go back to Step 1." };
   }
@@ -788,6 +814,7 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
 
     const created = await wizard.createMeet(db, wizardParsed, {
       meetType,
+      timingSystemPin,
       agentVersion: app.getVersion(),
     });
 
@@ -823,6 +850,7 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType) => {
       pin: created.pin,
       adminPin: created.adminPin,
       coachWord: created.coachWord,
+      timingSystemPin: created.timingSystemPin,
       meetType: created.meetType,
       eventCount: wizardParsed.events.length,
       heatCount: wizardParsed.heats.length,

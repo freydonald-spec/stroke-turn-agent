@@ -595,6 +595,25 @@
         <div class="pills" id="admin-pills" style="margin-top:12px;"></div>
         <p style="font-size:10px;color:#475569;margin-top:8px;">Tap a PIN to show its QR code</p>
 
+        <!-- Parent PIN (Time Drops) — editable in case it was skipped at setup -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;">
+          <div style="min-width:0;">
+            <div class="section-label" style="margin:0 0 2px;">Parent PIN</div>
+            <div id="admin-parent-pin-value" style="font-size:15px;font-weight:700;color:#e2e8f0;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.1em;">Not set</div>
+          </div>
+          <button class="wiz-btn ghost" id="admin-parent-pin-edit" style="width:auto;padding:7px 14px;font-size:12px;">Edit</button>
+        </div>
+        <div id="admin-parent-pin-editor" style="display:none;margin-top:10px;">
+          <input id="admin-parent-pin-input" type="text" inputmode="numeric" maxlength="4"
+            placeholder="4-digit PIN — blank to clear"
+            style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:14px;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
+          <div class="wiz-err" id="admin-parent-pin-err" style="display:none;"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="wiz-btn ghost" id="admin-parent-pin-cancel" style="flex:1;padding:8px;font-size:13px;">Cancel</button>
+            <button class="wiz-btn" id="admin-parent-pin-save" style="flex:1;padding:8px;font-size:13px;">Save</button>
+          </div>
+        </div>
+
         <div style="margin-top:16px;">
           <div class="section-label" style="margin:0 0 8px;">Codeset</div>
           <div class="cs-grid">
@@ -722,6 +741,21 @@
         <div id="wiz-timing-summary" style="display:none;margin-top:16px;">
           <div class="wiz-card" id="wiz-timing-card"></div>
         </div>
+
+        <!-- Time Drops PIN (optional) — parents use it to view their swimmer's DQs -->
+        <div style="margin-top:20px;">
+          <div class="section-label" style="margin:0 0 4px;">Time Drops PIN
+            <span style="color:#64748b;font-weight:600;text-transform:none;letter-spacing:0;">(optional)</span>
+          </div>
+          <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:8px;">
+            Parents use this PIN to view their swimmer's DQs on DQSync. Same PIN they use for Time Drops.
+          </div>
+          <input id="wiz-timing-pin" type="text" inputmode="numeric" maxlength="4"
+            placeholder="4-digit PIN — leave blank to skip"
+            style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:15px;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
+          <div class="wiz-err" id="wiz-timing-pin-err" style="display:none;"></div>
+        </div>
+
         <div style="display:flex;gap:10px;margin-top:16px;">
           <button class="wiz-btn ghost" id="wiz-timing-skip" style="flex:1;">Skip</button>
           <button class="wiz-btn" id="wiz-timing-next" style="flex:1;" disabled>Continue →</button>
@@ -793,6 +827,15 @@
               <div class="pin-roles">Coaches — read-only DQ view · join at /coach</div>
             </div>
             <img class="wiz-qr" id="wiz-qr-coach" alt="" />
+          </div>
+
+          <!-- Parent PIN — only shown when a Time Drops PIN was entered -->
+          <div class="wiz-pin-card" id="wiz-parent-card" style="display:none;">
+            <div class="pin-info">
+              <div class="pin-label">Parent PIN</div>
+              <div class="pin-value" id="wiz-pin-parent">----</div>
+              <div class="pin-roles">Parents enter this at dqsync.app/parent to follow their swimmer's DQs</div>
+            </div>
           </div>
 
           <div style="display:flex;gap:10px;margin:16px 0 10px;">
@@ -897,6 +940,7 @@
         setHeat(info.currentEvent, info.currentHeat, info.currentStroke);
       }
       renderLockState();
+      renderParentPin();
       loadCodesets();
       loadZones();
       showScreen('main');
@@ -963,6 +1007,56 @@
                  type: next === 'locked' ? 'warn' : 'success', time: nowTime() });
       } else {
         addLog({ msg: `Could not change lock state: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
+
+    // ── Parent PIN (Time Drops) — show + edit ──────────────────────────────────────
+    const parentPinValueEl  = document.getElementById('admin-parent-pin-value');
+    const parentPinEditor   = document.getElementById('admin-parent-pin-editor');
+    const parentPinInput    = document.getElementById('admin-parent-pin-input');
+    const parentPinErr      = document.getElementById('admin-parent-pin-err');
+
+    function renderParentPin() {
+      const pin = currentMeetInfo && currentMeetInfo.timingSystemPin;
+      parentPinValueEl.textContent = pin ? pin : 'Not set';
+      parentPinEditor.style.display = 'none';
+      parentPinErr.style.display = 'none';
+    }
+
+    parentPinInput.addEventListener('input', () => {
+      parentPinInput.value = parentPinInput.value.replace(/\D/g, '').slice(0, 4);
+      parentPinErr.style.display = 'none';
+    });
+
+    document.getElementById('admin-parent-pin-edit').addEventListener('click', () => {
+      parentPinInput.value = (currentMeetInfo && currentMeetInfo.timingSystemPin) || '';
+      parentPinErr.style.display = 'none';
+      parentPinEditor.style.display = 'block';
+      parentPinInput.focus();
+    });
+
+    document.getElementById('admin-parent-pin-cancel').addEventListener('click', () => {
+      parentPinEditor.style.display = 'none';
+      parentPinErr.style.display = 'none';
+    });
+
+    document.getElementById('admin-parent-pin-save').addEventListener('click', async () => {
+      const raw = (parentPinInput.value || '').replace(/\D/g, '');
+      parentPinErr.style.display = 'none';
+      if (raw.length !== 0 && raw.length !== 4) {
+        parentPinErr.textContent = 'Parent PIN must be exactly 4 digits (or blank to clear).';
+        parentPinErr.style.display = 'block';
+        return;
+      }
+      const res = await window.agent.setTimingPin(raw);
+      if (res && res.success) {
+        if (currentMeetInfo) currentMeetInfo.timingSystemPin = res.timingSystemPin;
+        renderParentPin();
+        addLog({ msg: res.timingSystemPin ? `Parent PIN set to ${res.timingSystemPin}` : 'Parent PIN cleared',
+                 type: 'success', time: nowTime() });
+      } else {
+        parentPinErr.textContent = (res && res.error) || 'Could not update Parent PIN.';
+        parentPinErr.style.display = 'block';
       }
     });
 
@@ -1344,7 +1438,7 @@
     const wizDots     = Array.from(document.getElementById('wiz-dots').children);
     const wizSteps    = Array.from(document.querySelectorAll('.wiz-step'));
 
-    const wiz = { step: 1, summary: null, timing: null, meetType: null, created: null };
+    const wiz = { step: 1, summary: null, timing: null, timingPin: null, meetType: null, created: null };
 
     function fmtDate(d) {
       if (!d) return '—';
@@ -1449,8 +1543,35 @@
       timingNext.disabled = false;
     });
 
-    document.getElementById('wiz-timing-skip').addEventListener('click', () => { wiz.timing = null; gotoStep(3); });
-    timingNext.addEventListener('click', () => gotoStep(3));
+    // Time Drops / parent PIN (optional). Strip non-digits as the user types.
+    const timingPinInput = document.getElementById('wiz-timing-pin');
+    const timingPinErr   = document.getElementById('wiz-timing-pin-err');
+    timingPinInput.addEventListener('input', () => {
+      timingPinInput.value = timingPinInput.value.replace(/\D/g, '').slice(0, 4);
+      timingPinErr.style.display = 'none';
+    });
+
+    // Capture + validate the PIN before leaving Step 2. Blank = skip (null);
+    // anything entered must be exactly 4 digits. Returns false to block advancing.
+    function captureTimingPin() {
+      const raw = (timingPinInput.value || '').replace(/\D/g, '');
+      timingPinErr.style.display = 'none';
+      if (raw.length === 0) { wiz.timingPin = null; return true; }
+      if (raw.length !== 4) {
+        timingPinErr.textContent = 'Time Drops PIN must be exactly 4 digits (or leave it blank).';
+        timingPinErr.style.display = 'block';
+        return false;
+      }
+      wiz.timingPin = raw;
+      return true;
+    }
+
+    document.getElementById('wiz-timing-skip').addEventListener('click', () => {
+      if (!captureTimingPin()) return;
+      wiz.timing = null;
+      gotoStep(3);
+    });
+    timingNext.addEventListener('click', () => { if (captureTimingPin()) gotoStep(3); });
 
     // Step 3: meet type
     const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
@@ -1499,7 +1620,7 @@
       gotoStep(5);
       creatingEl.style.display = 'block';
       doneEl.style.display = 'none';
-      const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual');
+      const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual', wiz.timingPin || null);
       if (!res || !res.success) {
         gotoStep(4);
         createErrEl.textContent = (res && res.error) || 'Could not create the meet.';
@@ -1518,6 +1639,14 @@
       document.getElementById('wiz-qr-official').src = res.qr.official;
       document.getElementById('wiz-qr-admin').src = res.qr.admin;
       document.getElementById('wiz-qr-coach').src = res.qr.coach;
+      // Parent PIN card — only when a Time Drops PIN was entered.
+      const parentCard = document.getElementById('wiz-parent-card');
+      if (res.timingSystemPin) {
+        document.getElementById('wiz-pin-parent').textContent = res.timingSystemPin;
+        parentCard.style.display = 'flex';
+      } else {
+        parentCard.style.display = 'none';
+      }
       creatingEl.style.display = 'none';
       doneEl.style.display = 'block';
     }
@@ -1530,8 +1659,9 @@
         `${r.meetName}\n\n` +
         `Officials PIN: ${r.pin}  (S&T, Chief Judge, Referee, Starter)\n` +
         `Admin PIN: ${r.adminPin}  (Scorekeeper / Admin — do not share with judges)\n` +
-        `Coach Word: ${r.coachWord}  (Coaches — read-only)\n\n` +
-        `Officials & scorekeepers join at https://dqsync.app/join\n` +
+        `Coach Word: ${r.coachWord}  (Coaches — read-only)\n` +
+        (r.timingSystemPin ? `Parent PIN: ${r.timingSystemPin}  (Parents — follow at /parent)\n` : '') +
+        `\nOfficials & scorekeepers join at https://dqsync.app/join\n` +
         `Coaches join at https://dqsync.app/coach`;
       let ok = await window.agent.copyToClipboard(text);
       if (!ok) {
