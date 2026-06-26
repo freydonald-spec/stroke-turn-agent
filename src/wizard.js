@@ -400,6 +400,9 @@ async function createMeet(db, parsed, opts = {}) {
     // web app's parent view queries against.
     timingSystemPin,
     status: "active",
+    // Parent View is opt-in: the meet director enables it from Admin after
+    // creation so the web /parent page can surface this meet. Default OFF.
+    parentViewEnabled: false,
     laneCount: parsed.laneCount > 0 ? parsed.laneCount : 6,
     // meetMode is the field every role page reads. meetType is written too to
     // satisfy the wizard spec; both carry the same "dual" | "standard" value.

@@ -305,6 +305,7 @@ async function buildMeetInfo(data) {
     currentHeat:   data.currentHeat   ?? null,
     currentStroke: data.currentStroke ?? null,
     status:        data.status ?? "active",
+    parentViewEnabled: data.parentViewEnabled ?? false,
     codesetId:     data.codesetId ?? null,
     zones:         Array.isArray(data.zones)
       ? data.zones.filter((z) => typeof z === "string" && z.trim())
@@ -515,6 +516,22 @@ ipcMain.handle('set-codeset', async (_event, codesetId) => {
     return { success: true, codesetId };
   } catch (err) {
     log(`❌ Could not change codeset: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Parent View": toggle whether parents can find this meet at
+// dqsync.app/parent. Writes parentViewEnabled (boolean) to the meet doc; the web
+// /parent page reads this field. Default off — the meet director opts in here.
+ipcMain.handle('set-parent-view-enabled', async (_event, enabled) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  const value = !!enabled;
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { parentViewEnabled: value });
+    log(value ? "👪 Parent View enabled" : "👪 Parent View disabled", value ? "success" : "warn");
+    return { success: true, enabled: value };
+  } catch (err) {
+    log(`❌ Could not change Parent View: ${err.message}`, "error");
     return { success: false, error: err.message };
   }
 });

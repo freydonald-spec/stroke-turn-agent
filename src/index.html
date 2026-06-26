@@ -221,6 +221,20 @@
     .cs-opt:hover { border-color: rgba(0,194,224,0.4); }
     .cs-opt.selected { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #fff; }
 
+    /* ── Parent View toggle switch ── */
+    .pv-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .pv-switch input { opacity: 0; width: 0; height: 0; }
+    .pv-track {
+      position: absolute; inset: 0; background: #334155; border-radius: 999px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .pv-track::before {
+      content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+      background: #e2e8f0; border-radius: 50%; transition: transform 0.15s;
+    }
+    .pv-switch input:checked + .pv-track { background: #00c2e0; }
+    .pv-switch input:checked + .pv-track::before { transform: translateX(20px); }
+
     /* ── Zone config ── */
     .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .zone-card {
@@ -510,7 +524,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.0.29</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.1.1</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -620,6 +634,20 @@
             <button class="cs-opt" data-cs-name="LSA 2023">LSA 2023</button>
             <button class="cs-opt" data-cs-name="NFHS / HY-Tek">NFHS / HY-Tek</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Parent View -->
+      <div class="section-label" style="margin-top:20px;">Parent View</div>
+      <div class="admin-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+          <p style="font-size:11px;color:#64748b;margin:0;line-height:1.4;flex:1;min-width:0;">
+            Allow parents to find this meet at dqsync.app/parent
+          </p>
+          <label class="pv-switch">
+            <input type="checkbox" id="parent-view-toggle" />
+            <span class="pv-track"></span>
+          </label>
         </div>
       </div>
 
@@ -941,6 +969,7 @@
       }
       renderLockState();
       renderParentPin();
+      renderParentView();
       loadCodesets();
       loadZones();
       showScreen('main');
@@ -1057,6 +1086,29 @@
       } else {
         parentPinErr.textContent = (res && res.error) || 'Could not update Parent PIN.';
         parentPinErr.style.display = 'block';
+      }
+    });
+
+    // ── Parent View toggle ─────────────────────────────────────────────────────────
+    // Writes parentViewEnabled to the meet doc so the web /parent page can decide
+    // whether to surface this meet. Default OFF — the meet director opts in here.
+    const parentViewToggle = document.getElementById('parent-view-toggle');
+
+    function renderParentView() {
+      parentViewToggle.checked = !!(currentMeetInfo && currentMeetInfo.parentViewEnabled);
+    }
+
+    parentViewToggle.addEventListener('change', async () => {
+      const enabled = parentViewToggle.checked;
+      const res = await window.agent.setParentViewEnabled(enabled);
+      if (res && res.success) {
+        if (currentMeetInfo) currentMeetInfo.parentViewEnabled = res.enabled;
+        addLog({ msg: res.enabled ? 'Parent View enabled' : 'Parent View disabled',
+                 type: res.enabled ? 'success' : 'warn', time: nowTime() });
+      } else {
+        // Revert the visual state if the write failed.
+        parentViewToggle.checked = !enabled;
+        addLog({ msg: `Could not change Parent View: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
       }
     });
 
