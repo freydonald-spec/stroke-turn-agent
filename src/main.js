@@ -223,12 +223,9 @@ function mapResultLane(lane) {
 
 // Index a Firestore heat doc's lanes by lane number. The wizard (wizard.js
 // parseMeetDetails) stores heat lanes as { laneNumber, swimmerName,
-// teamAbbreviation, relayNames } under `lanes`; we also tolerate a raw
-// `raceLanes` shape so this keeps working if the stored shape ever changes.
+// teamAbbreviation, relayNames } under `lanes`.
 function buildHeatLaneIndex(heatData) {
-  const arr = Array.isArray(heatData.lanes) ? heatData.lanes
-            : Array.isArray(heatData.raceLanes) ? heatData.raceLanes
-            : [];
+  const arr = Array.isArray(heatData.lanes) ? heatData.lanes : [];
   const map = new Map();
   for (const l of arr) {
     const ln = Number(l.laneNumber);
@@ -242,18 +239,14 @@ function buildHeatLaneIndex(heatData) {
 // relays. No matching heat lane → the result lane is returned unchanged.
 function enrichResultLane(resultLane, heatLane) {
   if (!heatLane) return resultLane;
-  const relayNames = Array.isArray(heatLane.relayNames) ? heatLane.relayNames
-                   : Array.isArray(heatLane.laneRelayNames) ? heatLane.laneRelayNames
-                   : [];
-  const isRelay = heatLane.laneIsRelay === true || relayNames.length > 0;
-  if (isRelay) {
-    // For relays the wizard stores the relay team name in swimmerName (it falls
-    // back from laneRelayTeamName during import), so prefer either source.
-    const relayTeamName = heatLane.laneRelayTeamName ?? heatLane.swimmerName ?? null;
+  const relayNames = Array.isArray(heatLane.relayNames) ? heatLane.relayNames : [];
+  if (relayNames.length > 0) {
+    // For relays the wizard stores the relay team name in swimmerName.
+    const relayTeamName = heatLane.swimmerName ?? null;
     return {
       ...resultLane,
       ...(relayTeamName ? { relayTeamName } : {}),
-      ...(relayNames.length ? { relayNames } : {}),
+      relayNames,
     };
   }
   return {
