@@ -221,6 +221,48 @@ function mapResultLane(lane) {
   };
 }
 
+// Index a Firestore heat doc's lanes by lane number. The wizard (wizard.js
+// parseMeetDetails) stores heat lanes as { laneNumber, swimmerName,
+// teamAbbreviation, relayNames } under `lanes`; we also tolerate a raw
+// `raceLanes` shape so this keeps working if the stored shape ever changes.
+function buildHeatLaneIndex(heatData) {
+  const arr = Array.isArray(heatData.lanes) ? heatData.lanes
+            : Array.isArray(heatData.raceLanes) ? heatData.raceLanes
+            : [];
+  const map = new Map();
+  for (const l of arr) {
+    const ln = Number(l.laneNumber);
+    if (ln > 0) map.set(ln, l);
+  }
+  return map;
+}
+
+// Enrich a swum result lane with names from its heat-sheet lane: swimmerName +
+// teamAbbreviation for individual events, or relayTeamName + relayNames for
+// relays. No matching heat lane → the result lane is returned unchanged.
+function enrichResultLane(resultLane, heatLane) {
+  if (!heatLane) return resultLane;
+  const relayNames = Array.isArray(heatLane.relayNames) ? heatLane.relayNames
+                   : Array.isArray(heatLane.laneRelayNames) ? heatLane.laneRelayNames
+                   : [];
+  const isRelay = heatLane.laneIsRelay === true || relayNames.length > 0;
+  if (isRelay) {
+    // For relays the wizard stores the relay team name in swimmerName (it falls
+    // back from laneRelayTeamName during import), so prefer either source.
+    const relayTeamName = heatLane.laneRelayTeamName ?? heatLane.swimmerName ?? null;
+    return {
+      ...resultLane,
+      ...(relayTeamName ? { relayTeamName } : {}),
+      ...(relayNames.length ? { relayNames } : {}),
+    };
+  }
+  return {
+    ...resultLane,
+    ...(heatLane.swimmerName ? { swimmerName: heatLane.swimmerName } : {}),
+    ...(heatLane.teamAbbreviation ? { teamAbbreviation: heatLane.teamAbbreviation } : {}),
+  };
+}
+
 // Read the result file for the heat that just finished and push it to Firestore.
 // Entirely best-effort — guarded so it only runs for a real, connected, live meet.
 async function pushPrevHeatResults(prevEvent, prevHeat) {
@@ -251,7 +293,22 @@ async function pushPrevHeatResults(prevEvent, prevHeat) {
     if (m) sessionNumber = Number(m[1]);
   }
 
-  const lanes = (Array.isArray(json.lanes) ? json.lanes : []).map(mapResultLane);
+  let lanes = (Array.isArray(json.lanes) ? json.lanes : []).map(mapResultLane);
+
+  // Cross-reference swimmer names from the heat sheet imported during wizard
+  // setup (meets/{id}/heats/{event}_{heat}). Best-effort: results still push
+  // (just without names) if the heat doc is missing or unreadable.
+  try {
+    const heatSnap = await getDoc(doc(db, "meets", meetId, "heats", `${prevEvent}_${prevHeat}`));
+    if (heatSnap.exists()) {
+      const heatIndex = buildHeatLaneIndex(heatSnap.data());
+      lanes = lanes.map((l) => (l.isEmpty ? l : enrichResultLane(l, heatIndex.get(l.lane))));
+    } else {
+      log(`⚠️ No heat sheet for E${prevEvent} H${prevHeat} — pushing results without names`, "warn");
+    }
+  } catch (err) {
+    log(`⚠️ Could not read heat sheet for E${prevEvent} H${prevHeat}: ${err.message}`, "warn");
+  }
 
   const result = {
     eventNumber: String(prevEvent),
