@@ -42,6 +42,11 @@ const FIREBASE_CONFIG = {
 const DEBOUNCE_MS = 800;
 const HEARTBEAT_MS = 30_000;
 
+// Time Drops writes these two files into the meet folder root; the agent finds
+// them by name instead of asking the user to pick each one.
+const MEET_DETAILS_NAME  = "meet_details.json";
+const TIMING_CONFIG_NAME = "timing_system_configuration.json";
+
 // ── Persistent settings ───────────────────────────────────────────────────────
 // Stored automatically at: C:\Users\<name>\AppData\Roaming\stroke-turn-agent\
 // User never touches this file.
@@ -78,14 +83,15 @@ let lastEvent     = null;
 let lastHeat      = null;
 let debounceTimer = null;
 let watcher       = null;
-let watchFile     = null;
+let watchFile     = null;   // timing_system_configuration.json inside the meet folder
+let watchFolder   = null;   // the Time Drops meet folder being watched
 let heartbeatTimer = null;
 let simulatorMode = false;
-let priorWatchFile = null; // real timing file watched before simulator mode started
+let priorWatchFolder = null; // meet folder watched before simulator mode started
 
 // New Meet Setup Wizard state — held between wizard steps until the meet is created.
 let wizardParsed = null;        // parsed meet_details.json
-let wizardTimingFile = null;    // path to the selected timing_system_configuration.json
+let wizardFolder = null;        // path to the selected Time Drops meet folder
 
 // Auto-update flow state — drives the full-screen update overlay.
 let updateFlowActive = false;   // true once an update is found (download/install underway)
@@ -414,17 +420,23 @@ function stopWatcher() {
   if (watcher) { watcher.close(); watcher = null; }
 }
 
-function startWatcher(filePath) {
+// Watch the whole Time Drops meet folder (depth 0 — root files only). The
+// timing_system_configuration.json inside it drives heat advancement, and new
+// session_*.json result files appearing in the same folder are read on demand
+// (see pushPrevHeatResults) when a heat advances.
+function startWatchingFolder(folderPath) {
   stopWatcher();
-  watchFile = filePath;
-  log(`👁️ Watching: ${path.basename(filePath)}`);
+  watchFolder = folderPath;
+  watchFile = path.join(folderPath, TIMING_CONFIG_NAME);
+  log(`👁️ Watching folder: ${path.basename(folderPath)}`);
   handleChange(); // read current state immediately
-  watcher = chokidar.watch(filePath, {
+  watcher = chokidar.watch(folderPath, {
     persistent: true,
     usePolling: true,
     interval: 500,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
     ignoreInitial: true,
+    depth: 0,
   });
   watcher
     .on("change", debouncedChange)
@@ -489,8 +501,8 @@ ipcMain.handle('connect-by-pin', async (_event, pin) => {
     log(`✅ Connected to: ${meetName}`, 'success');
     sendStatus({ type: 'connected', meetName });
     startHeartbeat();
-    if (watchFile && fs.existsSync(watchFile)) {
-      startWatcher(watchFile);
+    if (watchFolder && fs.existsSync(watchFolder)) {
+      startWatchingFolder(watchFolder);
     }
     const info = await buildMeetInfo(data);
     return { success: true, info };
@@ -567,36 +579,47 @@ ipcMain.handle('disconnect-meet', async () => {
   }
 });
 
-// Trigger 2: user manually selects the file via the button
-ipcMain.handle("select-file", async () => {
+// Admin → "Change meet folder": pick a different Time Drops meet folder. The
+// timing_system_configuration.json inside it must exist, since that's what
+// drives heat advancement.
+ipcMain.handle("select-folder", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select timing_system_configuration.json",
-    filters: [{ name: "JSON Files", extensions: ["json"] }],
-    properties: ["openFile"],
+    title: "Select Time Drops Meet Folder",
+    properties: ["openDirectory"],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
 
-  const filePath = result.filePaths[0];
+  const folder = result.filePaths[0];
+  if (!fs.existsSync(path.join(folder, TIMING_CONFIG_NAME))) {
+    log(`⚠️ No ${TIMING_CONFIG_NAME} in selected folder`, "warn");
+    return { error: `That folder has no ${TIMING_CONFIG_NAME}.` };
+  }
 
-  // Save path for future launches
+  // Save folder for future launches (drop any legacy single-file path).
   const settings = loadSettings();
-  settings.watchFile = filePath;
+  settings.watchFolder = folder;
+  delete settings.watchFile;
   saveSettings(settings);
 
-  log(`📁 File selected: ${path.basename(filePath)}`, "success");
-  startWatcher(filePath);
+  log(`📁 Meet folder selected: ${path.basename(folder)}`, "success");
+  startWatchingFolder(folder);
 
   // Auto-minimize after 800ms so user sees the green confirmation before it disappears
   if (mainWindow && !mainWindow.isDestroyed()) {
     setTimeout(() => mainWindow.minimize(), 800);
   }
 
-  return filePath;
+  return folder;
 });
 
-// UI is ready — send it the current watch file path if we have one
+// UI is ready — hand it the saved meet folder (deriving one from a legacy
+// single-file path so older installs still light up the Admin display).
 ipcMain.handle("get-settings", () => {
-  return loadSettings();
+  const settings = loadSettings();
+  if (!settings.watchFolder && settings.watchFile) {
+    settings.watchFolder = path.dirname(settings.watchFile);
+  }
+  return settings;
 });
 
 // Admin → "Lock meet": write status "locked"/"active" to the meet doc (the same
@@ -859,18 +882,18 @@ function buildDqReportCsv(eventLabelMap, dqs) {
 ipcMain.handle("simulator-start", () => {
   const filePath = simulator.startSimulator();
   simulatorMode = true;
-  // Remember the real timing file currently being watched so it can be resumed
+  // Remember the real meet folder currently being watched so it can be resumed
   // on stop — prefer the live target, fall back to the saved path.
-  priorWatchFile = watchFile ?? loadSettings().watchFile ?? null;
-  const wasWatchingTimingFile = !!watcher;
+  priorWatchFolder = watchFolder ?? loadSettings().watchFolder ?? null;
+  const wasWatching = !!watcher;
   log(`🎮 Simulator started → ${path.basename(filePath)}`, "success");
-  // Pause the real timing-file watcher automatically: pointing the watcher at
-  // the ephemeral simulated file stops the real timing file from being read.
-  // The simulator drives the change → push pipeline through that file instead.
-  if (wasWatchingTimingFile) {
+  // Pause the real meet-folder watcher automatically: pointing the watcher at
+  // the simulator's folder stops the real timing file from being read. The
+  // simulator drives the change → push pipeline through that file instead.
+  if (wasWatching) {
     log("⏸️ Timing file watcher paused — simulator active", "warn");
   }
-  startWatcher(filePath);
+  startWatchingFolder(path.dirname(filePath));
   return filePath;
 });
 
@@ -879,22 +902,24 @@ ipcMain.handle("simulator-stop", () => {
   simulatorMode = false;
   stopWatcher();
   watchFile = null;
+  watchFolder = null;
   log("🛑 Simulator stopped", "warn");
-  // Resume watching the real timing file that was configured before simulator
+  // Resume watching the real meet folder that was configured before simulator
   // mode, if one existed and still exists on disk.
-  if (priorWatchFile) {
-    const restore = priorWatchFile;
-    priorWatchFile = null;
+  if (priorWatchFolder) {
+    const restore = priorWatchFolder;
+    priorWatchFolder = null;
     const settings = loadSettings();
-    settings.watchFile = restore;
+    settings.watchFolder = restore;
     saveSettings(settings);
     if (fs.existsSync(restore)) {
-      log(`📁 Restored timing file: ${path.basename(restore)}`, "success");
-      startWatcher(restore);
+      log(`📁 Restored meet folder: ${path.basename(restore)}`, "success");
+      startWatchingFolder(restore);
       log("▶️ Timing file watcher resumed — simulator deactivated", "success");
     } else {
-      watchFile = restore;
-      log(`⚠️ Saved timing file not found: ${path.basename(restore)}`, "warn");
+      watchFolder = restore;
+      watchFile = path.join(restore, TIMING_CONFIG_NAME);
+      log(`⚠️ Saved meet folder not found: ${path.basename(restore)}`, "warn");
     }
   }
   return true;
@@ -907,24 +932,57 @@ ipcMain.handle("simulator-jump-heat", (_event, n) => simulator.jumpHeat(n));
 ipcMain.handle("simulator-get-state", () => simulator.getState());
 
 // ── New Meet Setup Wizard ─────────────────────────────────────────────────────
-// Step 1: pick + parse meet_details.json. Holds the parsed result in
-// wizardParsed for the create step and returns a summary for the UI.
-ipcMain.handle("wizard-select-meet-details", async () => {
+// Step 1: pick the Time Drops meet folder once. Scan it for the two required
+// files (meet_details.json + timing_system_configuration.json), parse the meet
+// details, and remember the folder so the watcher can start after creation.
+// Returns the meet summary + which files were found for the UI checkmarks.
+ipcMain.handle("wizard-select-folder", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select meet_details.json",
-    filters: [{ name: "JSON Files", extensions: ["json"] }],
-    properties: ["openFile"],
+    title: "Select Time Drops Meet Folder",
+    properties: ["openDirectory"],
   });
   if (result.canceled || result.filePaths.length === 0) return { canceled: true };
 
-  const filePath = result.filePaths[0];
+  const folder = result.filePaths[0];
+  const detailsPath = path.join(folder, MEET_DETAILS_NAME);
+  const timingPath  = path.join(folder, TIMING_CONFIG_NAME);
+  const hasDetails = fs.existsSync(detailsPath);
+  const hasTiming  = fs.existsSync(timingPath);
+
+  // Either required file missing → tell the user exactly what's absent.
+  if (!hasDetails || !hasTiming) {
+    const missing = [];
+    if (!hasDetails) missing.push(MEET_DETAILS_NAME);
+    if (!hasTiming)  missing.push(TIMING_CONFIG_NAME);
+    log(`⚠️ Meet folder missing ${missing.join(" + ")}`, "warn");
+    return {
+      success: false,
+      folder,
+      hasDetails,
+      hasTiming,
+      error: `Couldn't find ${missing.join(" and ")} in that folder. ` +
+             `Choose the Time Drops meet folder that holds your meet files.`,
+    };
+  }
+
   try {
-    const json = wizard.readJsonFile(filePath);
-    const parsed = wizard.parseMeetDetails(json);
+    const parsed = wizard.parseMeetDetails(wizard.readJsonFile(detailsPath));
     wizardParsed = parsed;
-    log(`📋 Loaded meet details: ${parsed.meetName || path.basename(filePath)}`, "success");
+    wizardFolder = folder;
+
+    // Timing config parse is best-effort — used only for the lane-count display.
+    let config = null;
+    try {
+      const cfg = wizard.parseTimingConfig(wizard.readJsonFile(timingPath));
+      config = { numberOfLanes: cfg.numberOfLanes, timingSystemType: cfg.timingSystemType };
+    } catch { /* non-fatal: the folder is still valid for meet creation */ }
+
+    log(`📁 Meet folder loaded: ${parsed.meetName || path.basename(folder)}`, "success");
     return {
       success: true,
+      folder,
+      hasDetails: true,
+      hasTiming: true,
       summary: {
         meetName: parsed.meetName,
         meetStartDate: parsed.meetStartDate,
@@ -938,40 +996,11 @@ ipcMain.handle("wizard-select-meet-details", async () => {
         teamCount: parsed.teams.length,
         meetType: parsed.meetType,
       },
+      config,
     };
   } catch (err) {
-    log(`❌ Could not read meet details: ${err.message}`, "error");
-    return { success: false, error: err.message };
-  }
-});
-
-// Step 2: pick + parse timing_system_configuration.json. Remembers the path so
-// "Start Watching Files" can watch it after the meet is created.
-ipcMain.handle("wizard-select-timing-config", async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select timing_system_configuration.json",
-    filters: [{ name: "JSON Files", extensions: ["json"] }],
-    properties: ["openFile"],
-  });
-  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
-
-  const filePath = result.filePaths[0];
-  try {
-    const json = wizard.readJsonFile(filePath);
-    const cfg = wizard.parseTimingConfig(json);
-    wizardTimingFile = filePath;
-    log(`⏱️ Loaded timing config: ${cfg.timingSystemType || "timing system"}`, "success");
-    return {
-      success: true,
-      config: {
-        numberOfLanes: cfg.numberOfLanes,
-        timingSystemType: cfg.timingSystemType,
-        filePath,
-      },
-    };
-  } catch (err) {
-    log(`❌ Could not read timing config: ${err.message}`, "error");
-    return { success: false, error: err.message };
+    log(`❌ Could not read meet files: ${err.message}`, "error");
+    return { success: false, folder, hasDetails, hasTiming, error: err.message };
   }
 });
 
@@ -1000,10 +1029,11 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType, timingSystemPin) =
     sendStatus({ type: "connected", meetName: created.meetName });
     startHeartbeat();
 
-    // Persist the timing file path so the watcher resumes on relaunch.
-    if (wizardTimingFile) {
+    // Persist the meet folder so the watcher resumes on relaunch.
+    if (wizardFolder) {
       const settings = loadSettings();
-      settings.watchFile = wizardTimingFile;
+      settings.watchFolder = wizardFolder;
+      delete settings.watchFile;
       saveSettings(settings);
     }
 
@@ -1049,18 +1079,19 @@ ipcMain.handle("copy-to-clipboard", (_event, text) => {
   }
 });
 
-// Step 5: begin watching the timing file selected in Step 2 (the existing Time
-// Drops file-watch pipeline). No-op if no timing file was provided.
+// Final step: begin watching the meet folder selected in Step 1 (the existing
+// Time Drops watch pipeline). No-op if no folder was selected.
 ipcMain.handle("wizard-start-watching", () => {
-  if (!wizardTimingFile) return { success: false, error: "No timing file selected." };
-  if (!fs.existsSync(wizardTimingFile)) {
-    return { success: false, error: "Timing file not found on disk." };
+  if (!wizardFolder) return { success: false, error: "No meet folder selected." };
+  if (!fs.existsSync(wizardFolder)) {
+    return { success: false, error: "Meet folder not found on disk." };
   }
   const settings = loadSettings();
-  settings.watchFile = wizardTimingFile;
+  settings.watchFolder = wizardFolder;
+  delete settings.watchFile;
   saveSettings(settings);
-  startWatcher(wizardTimingFile);
-  return { success: true, filePath: wizardTimingFile };
+  startWatchingFolder(wizardFolder);
+  return { success: true, folder: wizardFolder };
 });
 
 // ── Window ────────────────────────────────────────────────────────────────────
@@ -1244,11 +1275,15 @@ app.whenReady().then(async () => {
   const authed = await initAuth();
   if (!authed) return;
 
-  // Restore saved watch file path if it still exists on disk
+  // Restore the saved meet folder if it still exists on disk (deriving one from
+  // a legacy single-file path for older installs).
   const settings = loadSettings();
-  if (settings.watchFile && fs.existsSync(settings.watchFile)) {
-    watchFile = settings.watchFile;
-    log(`📁 Using saved file: ${path.basename(settings.watchFile)}`);
+  const savedFolder = settings.watchFolder
+    || (settings.watchFile ? path.dirname(settings.watchFile) : null);
+  if (savedFolder && fs.existsSync(savedFolder)) {
+    watchFolder = savedFolder;
+    watchFile = path.join(savedFolder, TIMING_CONFIG_NAME);
+    log(`📁 Using saved meet folder: ${path.basename(savedFolder)}`);
   }
 });
 

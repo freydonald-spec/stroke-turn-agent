@@ -391,6 +391,20 @@
       border: 3px solid #1e293b; border-top-color: #00c2e0;
       animation: spin 0.8s linear infinite; margin: 24px auto;
     }
+    .wiz-folder-path {
+      font-family: "Consolas","SF Mono",monospace; font-size: 12px; color: #cbd5e1;
+      background: #0a1628; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 9px 12px; margin-bottom: 12px; word-break: break-all;
+    }
+    .wiz-checks { margin-bottom: 14px; }
+    .wiz-check {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: #34d399; font-weight: 600; margin-bottom: 6px;
+    }
+    .wiz-check .ck {
+      font-weight: 800; color: #34d399;
+    }
+    .wiz-check .cf { color: #cbd5e1; font-weight: 600; }
 
     /* ── Auto-update overlay ── */
     #update-overlay {
@@ -524,7 +538,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.0</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.1</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -673,7 +687,7 @@
         <span class="ai-ico">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </span>
-        <span class="ai-text">Change timing file<div class="ai-sub" id="admin-change-timing-sub">Point the watcher at a new timing file</div></span>
+        <span class="ai-text">Change meet folder<div class="ai-sub" id="admin-change-timing-sub">Point DQSync at a different Time Drops meet folder</div></span>
       </button>
       <button class="admin-action danger" id="admin-disconnect">
         <span class="ai-ico">
@@ -737,62 +751,48 @@
       <div class="wiz-steps" id="wiz-dots">
         <div class="wiz-dot"></div><div class="wiz-dot"></div>
         <div class="wiz-dot"></div><div class="wiz-dot"></div>
-        <div class="wiz-dot"></div>
       </div>
     </div>
 
     <div class="wiz-body">
 
-      <!-- Step 1 — Import Meet Details -->
+      <!-- Step 1 — Select Meet Folder -->
       <div class="wiz-step" data-step="1">
-        <div class="wiz-kicker">Step 1 of 5</div>
-        <div class="wiz-title">Import meet details</div>
-        <div class="wiz-sub">Select the <span style="font-family:monospace;color:#cbd5e1;">meet_details.json</span> file exported from Meet Maestro.</div>
-        <button class="wiz-btn" id="wiz-browse-details">Browse…</button>
-        <div class="wiz-err" id="wiz-details-err"></div>
-        <div id="wiz-details-summary" style="display:none;margin-top:16px;">
-          <div class="wiz-card" id="wiz-details-card"></div>
-          <div style="display:flex;gap:10px;">
-            <button class="wiz-btn ghost" id="wiz-details-change" style="flex:1;">Change file</button>
-            <button class="wiz-btn" id="wiz-details-next" style="flex:1;">Continue →</button>
+        <div class="wiz-kicker">Step 1 of 4</div>
+        <div class="wiz-title">Select Time Drops Meet Folder</div>
+        <div class="wiz-sub">Select the folder containing your meet files. DQSync will find everything it needs.</div>
+        <button class="wiz-btn" id="wiz-browse-folder">Browse…</button>
+        <div class="wiz-err" id="wiz-folder-err"></div>
+
+        <div id="wiz-folder-summary" style="display:none;margin-top:16px;">
+          <div class="wiz-folder-path" id="wiz-folder-path"></div>
+          <div class="wiz-checks" id="wiz-folder-checks"></div>
+          <div class="wiz-card" id="wiz-folder-card"></div>
+
+          <!-- Time Drops PIN (optional) — parents use it to view their swimmer's DQs -->
+          <div style="margin-top:4px;">
+            <div class="section-label" style="margin:0 0 4px;">Time Drops PIN
+              <span style="color:#64748b;font-weight:600;text-transform:none;letter-spacing:0;">(optional)</span>
+            </div>
+            <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:8px;">
+              Parents use this PIN to view their swimmer's DQs on DQSync. Same PIN they use for Time Drops.
+            </div>
+            <input id="wiz-timing-pin" type="text" inputmode="numeric" maxlength="4"
+              placeholder="4-digit PIN — leave blank to skip"
+              style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:15px;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
+            <div class="wiz-err" id="wiz-timing-pin-err" style="display:none;"></div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="wiz-btn ghost" id="wiz-folder-change" style="flex:1;">Change folder</button>
+            <button class="wiz-btn" id="wiz-folder-next" style="flex:1;">Continue →</button>
           </div>
         </div>
       </div>
 
-      <!-- Step 2 — Import Timing Config -->
+      <!-- Step 2 — Meet Type -->
       <div class="wiz-step" data-step="2">
-        <div class="wiz-kicker">Step 2 of 5</div>
-        <div class="wiz-title">Connect timing system</div>
-        <div class="wiz-sub">Select <span style="font-family:monospace;color:#cbd5e1;">timing_system_configuration.json</span> from your timing system, or skip if you don't have one.</div>
-        <button class="wiz-btn" id="wiz-browse-timing">Browse…</button>
-        <div class="wiz-err" id="wiz-timing-err"></div>
-        <div id="wiz-timing-summary" style="display:none;margin-top:16px;">
-          <div class="wiz-card" id="wiz-timing-card"></div>
-        </div>
-
-        <!-- Time Drops PIN (optional) — parents use it to view their swimmer's DQs -->
-        <div style="margin-top:20px;">
-          <div class="section-label" style="margin:0 0 4px;">Time Drops PIN
-            <span style="color:#64748b;font-weight:600;text-transform:none;letter-spacing:0;">(optional)</span>
-          </div>
-          <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:8px;">
-            Parents use this PIN to view their swimmer's DQs on DQSync. Same PIN they use for Time Drops.
-          </div>
-          <input id="wiz-timing-pin" type="text" inputmode="numeric" maxlength="4"
-            placeholder="4-digit PIN — leave blank to skip"
-            style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:15px;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
-          <div class="wiz-err" id="wiz-timing-pin-err" style="display:none;"></div>
-        </div>
-
-        <div style="display:flex;gap:10px;margin-top:16px;">
-          <button class="wiz-btn ghost" id="wiz-timing-skip" style="flex:1;">Skip</button>
-          <button class="wiz-btn" id="wiz-timing-next" style="flex:1;" disabled>Continue →</button>
-        </div>
-      </div>
-
-      <!-- Step 3 — Meet Type -->
-      <div class="wiz-step" data-step="3">
-        <div class="wiz-kicker">Step 3 of 5</div>
+        <div class="wiz-kicker">Step 2 of 4</div>
         <div class="wiz-title">Meet type</div>
         <div class="wiz-sub">Choose how DQs are approved for this meet.</div>
         <div class="wiz-type-grid">
@@ -809,9 +809,9 @@
         <button class="wiz-btn" id="wiz-type-next">Continue →</button>
       </div>
 
-      <!-- Step 4 — Review & Create -->
-      <div class="wiz-step" data-step="4">
-        <div class="wiz-kicker">Step 4 of 5</div>
+      <!-- Step 3 — Review & Create -->
+      <div class="wiz-step" data-step="3">
+        <div class="wiz-kicker">Step 3 of 4</div>
         <div class="wiz-title">Review &amp; create</div>
         <div class="wiz-sub">Confirm the details below, then create the meet.</div>
         <div class="wiz-card" id="wiz-review-card"></div>
@@ -819,8 +819,8 @@
         <button class="wiz-btn" id="wiz-create-btn">Create Meet</button>
       </div>
 
-      <!-- Step 5 — Done / PINs -->
-      <div class="wiz-step" data-step="5">
+      <!-- Step 4 — Done / PINs -->
+      <div class="wiz-step" data-step="4">
         <div id="wiz-creating" style="text-align:center;padding:40px 0;">
           <div class="wiz-spinner"></div>
           <div style="font-size:13px;color:#94a3b8;" id="wiz-creating-msg">Creating meet…</div>
@@ -1280,8 +1280,9 @@
     });
 
     document.getElementById('admin-change-timing').addEventListener('click', async () => {
-      const filePath = await window.agent.selectFile();
-      if (filePath) setTimingFile(filePath);
+      const res = await window.agent.selectFolder();
+      if (typeof res === 'string') setMeetFolder(res);
+      else if (res && res.error) addLog({ msg: res.error, type: 'warn', time: nowTime() });
     });
 
     document.getElementById('admin-disconnect').addEventListener('click', async () => {
@@ -1295,13 +1296,11 @@
       }
     });
 
-    function setTimingFile(filePath) {
-      if (!filePath) return;
-      const parts = filePath.replace(/\\/g, '/').split('/');
-      const name = parts[parts.length - 1];
+    function setMeetFolder(folderPath) {
+      if (!folderPath) return;
       const el = document.getElementById('admin-change-timing-sub');
-      el.textContent = `Watching: ${name}`;
-      el.title = filePath;
+      el.textContent = `Meet folder: ${folderPath}`;
+      el.title = folderPath;
     }
 
     // ── Activity log ────────────────────────────────────────────────────────────
@@ -1498,7 +1497,7 @@
     const wizDots     = Array.from(document.getElementById('wiz-dots').children);
     const wizSteps    = Array.from(document.querySelectorAll('.wiz-step'));
 
-    const wiz = { step: 1, summary: null, timing: null, timingPin: null, meetType: null, created: null };
+    const wiz = { step: 1, summary: null, config: null, folder: null, timingPin: null, meetType: null, created: null };
 
     function fmtDate(d) {
       if (!d) return '—';
@@ -1524,9 +1523,9 @@
         d.classList.toggle('active', i + 1 === n);
         d.classList.toggle('done', i + 1 < n);
       });
-      wizBack.style.visibility = n >= 5 ? 'hidden' : 'visible';
-      if (n === 3) enterStep3();
-      if (n === 4) renderReview();
+      wizBack.style.visibility = n >= 4 ? 'hidden' : 'visible';
+      if (n === 2) enterMeetType();
+      if (n === 3) renderReview();
     }
 
     newMeetBtn.addEventListener('click', showWizard);
@@ -1536,25 +1535,36 @@
       gotoStep(wiz.step - 1);
     });
 
-    // Step 1: meet details
-    const detailsErr     = document.getElementById('wiz-details-err');
-    const detailsSummary = document.getElementById('wiz-details-summary');
-    const detailsCard    = document.getElementById('wiz-details-card');
-    const browseDetails  = document.getElementById('wiz-browse-details');
+    // Step 1: select the Time Drops meet folder. Scans for both required files,
+    // shows the folder path + green checkmarks, and renders the meet summary.
+    const folderErr     = document.getElementById('wiz-folder-err');
+    const folderSummary = document.getElementById('wiz-folder-summary');
+    const folderPathEl  = document.getElementById('wiz-folder-path');
+    const folderChecks  = document.getElementById('wiz-folder-checks');
+    const folderCard    = document.getElementById('wiz-folder-card');
+    const browseFolder  = document.getElementById('wiz-browse-folder');
 
-    async function pickMeetDetails() {
-      detailsErr.style.display = 'none';
-      const res = await window.agent.wizardSelectMeetDetails();
+    async function pickMeetFolder() {
+      folderErr.style.display = 'none';
+      const res = await window.agent.wizardSelectFolder();
       if (!res || res.canceled) return;
       if (!res.success) {
-        detailsErr.textContent = res.error || 'Could not read that file.';
-        detailsErr.style.display = 'block';
+        folderErr.textContent = res.error || 'Could not read that folder.';
+        folderErr.style.display = 'block';
+        folderSummary.style.display = 'none';
+        browseFolder.style.display = 'block';
         return;
       }
       wiz.summary = res.summary;
+      wiz.config  = res.config || null;
+      wiz.folder  = res.folder;
       const s = res.summary;
+      folderPathEl.textContent = res.folder;
+      folderChecks.innerHTML =
+        `<div class="wiz-check"><span class="ck">✓</span><span class="cf">meet_details.json found</span></div>` +
+        `<div class="wiz-check"><span class="ck">✓</span><span class="cf">timing_system_configuration.json found</span></div>`;
       const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
-      rows(detailsCard, [
+      rows(folderCard, [
         ['Meet name', s.meetName || '—'],
         ['Date', fmtDate(s.meetStartDate)],
         ['Host team', s.hostTeamName || (s.hostAbbr || '—')],
@@ -1563,44 +1573,14 @@
         ['Events', s.eventCount],
         ['Heats', s.heatCount],
       ]);
-      detailsSummary.style.display = 'block';
-      browseDetails.style.display = 'none';
+      folderSummary.style.display = 'block';
+      browseFolder.style.display = 'none';
     }
 
-    browseDetails.addEventListener('click', pickMeetDetails);
-    document.getElementById('wiz-details-change').addEventListener('click', pickMeetDetails);
-    document.getElementById('wiz-details-next').addEventListener('click', () => gotoStep(2));
-
-    // Step 2: timing config
-    const timingErr     = document.getElementById('wiz-timing-err');
-    const timingSummary = document.getElementById('wiz-timing-summary');
-    const timingCard    = document.getElementById('wiz-timing-card');
-    const timingNext    = document.getElementById('wiz-timing-next');
-
-    document.getElementById('wiz-browse-timing').addEventListener('click', async () => {
-      timingErr.style.display = 'none';
-      const res = await window.agent.wizardSelectTimingConfig();
-      if (!res || res.canceled) return;
-      if (!res.success) {
-        timingErr.textContent = res.error || 'Could not read that file.';
-        timingErr.style.display = 'block';
-        return;
-      }
-      wiz.timing = res.config;
-      const sys = res.config.timingSystemType || 'Timing system';
-      const lanes = res.config.numberOfLanes ? ` · ${res.config.numberOfLanes} lanes` : '';
-      let warn = '';
-      if (wiz.summary && res.config.numberOfLanes && wiz.summary.laneCount &&
-          res.config.numberOfLanes !== wiz.summary.laneCount) {
-        warn = `<div style="font-size:11px;color:#fbbf24;margin-top:6px;">⚠ Lane count (${res.config.numberOfLanes}) differs from meet details (${wiz.summary.laneCount}).</div>`;
-      }
-      timingCard.innerHTML =
-        `<div style="display:flex;align-items:center;gap:8px;">
-           <span style="width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>
-           <span style="font-size:14px;font-weight:600;color:#fff;">${escapeHtml(sys)} connected${escapeHtml(lanes)}</span>
-         </div>${warn}`;
-      timingSummary.style.display = 'block';
-      timingNext.disabled = false;
+    browseFolder.addEventListener('click', pickMeetFolder);
+    document.getElementById('wiz-folder-change').addEventListener('click', pickMeetFolder);
+    document.getElementById('wiz-folder-next').addEventListener('click', () => {
+      if (captureTimingPin()) gotoStep(2);
     });
 
     // Time Drops / parent PIN (optional). Strip non-digits as the user types.
@@ -1626,14 +1606,7 @@
       return true;
     }
 
-    document.getElementById('wiz-timing-skip').addEventListener('click', () => {
-      if (!captureTimingPin()) return;
-      wiz.timing = null;
-      gotoStep(3);
-    });
-    timingNext.addEventListener('click', () => { if (captureTimingPin()) gotoStep(3); });
-
-    // Step 3: meet type
+    // Step 2: meet type
     const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
     const typeNote = document.getElementById('wiz-type-note');
 
@@ -1643,21 +1616,21 @@
     }
     typeBtns.forEach((b) => b.addEventListener('click', () => selectType(b.dataset.type)));
 
-    function enterStep3() {
+    function enterMeetType() {
       const auto = (wiz.summary && wiz.summary.meetType) || 'dual';
       if (!wiz.meetType) selectType(auto); else selectType(wiz.meetType);
       const n = wiz.summary ? wiz.summary.teamCount : 0;
       typeNote.textContent = `Auto-detected based on ${n} team${n === 1 ? '' : 's'} in the heat sheet — tap to override.`;
     }
-    document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(4));
+    document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(3));
 
-    // Step 4: review
+    // Step 3: review
     function renderReview() {
       const s = wiz.summary || {};
       const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
-      const timingLabel = wiz.timing
-        ? `${wiz.timing.timingSystemType || 'Timing system'}${wiz.timing.numberOfLanes ? ` · ${wiz.timing.numberOfLanes} lanes` : ''}`
-        : 'None';
+      const timingLabel = wiz.config
+        ? `${wiz.config.timingSystemType || 'Timing system'}${wiz.config.numberOfLanes ? ` · ${wiz.config.numberOfLanes} lanes` : ''}`
+        : 'Connected';
       rows(document.getElementById('wiz-review-card'), [
         ['Meet name', s.meetName || '—'],
         ['Date', fmtDate(s.meetStartDate)],
@@ -1670,19 +1643,19 @@
       ]);
     }
 
-    // Step 4 → 5: create
+    // Step 3 → 4: create
     const createErrEl = document.getElementById('wiz-create-err');
     const creatingEl  = document.getElementById('wiz-creating');
     const doneEl      = document.getElementById('wiz-done');
 
     document.getElementById('wiz-create-btn').addEventListener('click', async () => {
       createErrEl.style.display = 'none';
-      gotoStep(5);
+      gotoStep(4);
       creatingEl.style.display = 'block';
       doneEl.style.display = 'none';
       const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual', wiz.timingPin || null);
       if (!res || !res.success) {
-        gotoStep(4);
+        gotoStep(3);
         createErrEl.textContent = (res && res.error) || 'Could not create the meet.';
         createErrEl.style.display = 'block';
         return;
@@ -1711,7 +1684,7 @@
       doneEl.style.display = 'block';
     }
 
-    // Step 5: copy PINs + start watching
+    // Step 4: copy PINs + start watching
     document.getElementById('wiz-copy-pins').addEventListener('click', async (e) => {
       const r = wiz.created;
       if (!r) return;
@@ -1739,20 +1712,20 @@
       const watchErr = document.getElementById('wiz-watch-err');
       watchErr.style.display = 'none';
       const res = await window.agent.wizardStartWatching();
-      if (wiz.timing && wiz.timing.filePath) setTimingFile(wiz.timing.filePath);
+      if (wiz.folder) setMeetFolder(wiz.folder);
       hideWizard();
       // The meet is already connected in the main process — pull its full info
       // (credentials + QR + current heat) and enter the main screen.
       const info = await window.agent.getMeetInfo();
       enterMeet(info && info.success ? info.info : (wiz.created || null));
       if (!res || !res.success) {
-        addLog({ msg: 'No timing file selected — choose one from Admin to begin syncing.', type: 'warn', time: nowTime() });
+        addLog({ msg: 'Could not start watching the meet folder — pick it again from Admin.', type: 'warn', time: nowTime() });
       }
     });
 
     // ── On load: restore saved settings ──────────────────────────────────────
     window.agent.getSettings().then((settings) => {
-      if (settings.watchFile) setTimingFile(settings.watchFile);
+      if (settings.watchFolder) setMeetFolder(settings.watchFolder);
       pinBoxes[0].focus();
     });
   </script>

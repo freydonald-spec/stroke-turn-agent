@@ -10,8 +10,8 @@ contextBridge.exposeInMainWorld("agent", {
   // Get saved settings on startup
   getSettings: () => ipcRenderer.invoke("get-settings"),
 
-  // Open native file picker
-  selectFile: () => ipcRenderer.invoke("select-file"),
+  // Open native folder picker (Time Drops meet folder)
+  selectFolder: () => ipcRenderer.invoke("select-folder"),
 
   // Connect to a meet by PIN
   connectByPin: (pin) => ipcRenderer.invoke("connect-by-pin", pin),
@@ -31,8 +31,7 @@ contextBridge.exposeInMainWorld("agent", {
   exportDqs: () => ipcRenderer.invoke("export-dqs"),
 
   // New Meet Setup Wizard
-  wizardSelectMeetDetails: () => ipcRenderer.invoke("wizard-select-meet-details"),
-  wizardSelectTimingConfig: () => ipcRenderer.invoke("wizard-select-timing-config"),
+  wizardSelectFolder: () => ipcRenderer.invoke("wizard-select-folder"),
   wizardCreateMeet: (meetType, timingSystemPin) => ipcRenderer.invoke("wizard-create-meet", meetType, timingSystemPin),
   wizardStartWatching: () => ipcRenderer.invoke("wizard-start-watching"),
   copyToClipboard: (text) => ipcRenderer.invoke("copy-to-clipboard", text),
