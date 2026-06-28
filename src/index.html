@@ -506,6 +506,63 @@
       font-weight: 600;
     }
     #upd-btn.ghost:hover { border-color: #64748b; color: #e2e8f0; }
+
+    /* ── Admin help button ── */
+    .admin-help-btn {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: #0f1e35; border: 1px solid #334155; color: #94a3b8;
+      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .admin-help-btn:hover { border-color: #64748b; color: #e2e8f0; }
+
+    /* ── Troubleshooting help modal ── */
+    #help-overlay {
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(10,22,40,0.8); display: none;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #help-overlay.visible { display: flex; }
+    .help-modal {
+      background: #0f1e35; border: 1px solid #1e3a5f; border-radius: 16px;
+      width: 100%; max-width: 480px; max-height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .help-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid #1e293b; flex-shrink: 0;
+    }
+    .help-title { font-size: 17px; font-weight: 700; color: #fff; }
+    .help-close {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      background: transparent; border: 1px solid #334155; color: #94a3b8;
+      font-size: 14px; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .help-close:hover { border-color: #64748b; color: #e2e8f0; }
+    .help-body { overflow-y: auto; padding: 10px 16px 18px; }
+
+    .help-cat { border-bottom: 1px solid #16233f; }
+    .help-cat:last-child { border-bottom: none; }
+    .help-cat-header {
+      width: 100%; display: flex; align-items: center; gap: 9px;
+      background: none; border: none; cursor: pointer; font-family: inherit;
+      padding: 13px 4px; color: #00c2e0; font-size: 14px; font-weight: 700; text-align: left;
+    }
+    .help-cat-header .hc-emoji { font-size: 15px; flex-shrink: 0; }
+    .help-cat-header .hc-label { flex: 1; }
+    .help-cat-chevron { color: #64748b; font-size: 12px; transition: transform 0.2s; flex-shrink: 0; }
+    .help-cat.open .help-cat-chevron { transform: rotate(180deg); }
+    .help-cat-body { display: none; padding: 0 4px 10px; }
+    .help-cat.open .help-cat-body { display: block; }
+
+    .help-item {
+      padding: 9px 12px; margin-bottom: 8px; border-radius: 9px;
+      background: #0a1628; border: 1px solid #1e293b;
+    }
+    .help-item:last-child { margin-bottom: 0; }
+    .help-q { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .help-a { font-size: 12px; color: #94a3b8; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -533,12 +590,23 @@
     </div>
   </div>
 
+  <!-- ── Troubleshooting help modal (Admin) ──────────────────────────────── -->
+  <div id="help-overlay">
+    <div class="help-modal">
+      <div class="help-head">
+        <span class="help-title">Troubleshooting</span>
+        <button class="help-close" id="help-close" aria-label="Close">✕</button>
+      </div>
+      <div class="help-body" id="help-content"></div>
+    </div>
+  </div>
+
   <!-- ════════════ SCREEN 1 — Launch ════════════ -->
   <div id="screen-launch" class="screen active">
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.1</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.2</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -615,7 +683,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
-      <div class="scr-title" style="margin-bottom:16px;">Admin</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="scr-title">Admin</div>
+        <button class="admin-help-btn" id="admin-help-btn" title="Troubleshooting" aria-label="Troubleshooting">?</button>
+      </div>
 
       <!-- Meet info -->
       <div class="admin-card">
@@ -1721,6 +1792,80 @@
       if (!res || !res.success) {
         addLog({ msg: 'Could not start watching the meet folder — pick it again from Admin.', type: 'warn', time: nowTime() });
       }
+    });
+
+    // ── Troubleshooting help modal (Admin) ───────────────────────────────────
+    // Static, self-contained reference rendered into collapsible categories.
+    const HELP_CATEGORIES = [
+      { emoji: '📡', title: 'Connectivity', items: [
+        { q: 'Meet got ahead by a heat', a: 'Meet Maestro advanced the heat accidentally. DQSync reads from MM — not a DQSync bug. Use manual heat correction in Admin to step back.' },
+        { q: 'Time Drops lost connection', a: "Times won't auto-load but the meet continues. Scorekeepers enter times manually in MM. DQSync heat advancement reads from MM not Time Drops directly — unaffected." },
+        { q: 'Agent shows disconnected', a: 'Check WiFi on this laptop. Restart the Agent. DQ filing on officials devices will pause until reconnected.' },
+      ]},
+      { emoji: '🏊', title: 'Meet Setup', items: [
+        { q: 'Wrong meet loaded', a: 'Use Change Meet in Admin to disconnect and re-enter the correct PIN.' },
+        { q: 'Meet folder import failed', a: 'Confirm the folder contains both meet_details.json and timing_system_configuration.json. Re-import from Admin.' },
+        { q: 'Teams not recognized', a: 'Team abbreviation in meet file must match the authorized teams list. Contact hello@dqsync.app.' },
+        { q: 'Parent PIN not working', a: 'Confirm PIN was entered in wizard setup. Check Parent PIN field in Admin. Parents go to dqsync.app/parent.' },
+      ]},
+      { emoji: '👥', title: 'Officials', items: [
+        { q: "Judge can't find the meet", a: 'Confirm PIN is correct. Meet must be active not locked. Check Agent shows green dot.' },
+        { q: 'Judge joined wrong role', a: 'They tap Change Role on their device and re-join.' },
+        { q: 'CJ not receiving notifications', a: 'Confirm notifications enabled on their device. CJ must have allowed notifications when prompted.' },
+        { q: 'Scorekeeper missing confirmed DQs', a: 'Confirmed DQs appear in Enter into Meet Maestro section. Check meet is not locked.' },
+      ]},
+      { emoji: '📋', title: 'DQ Workflow', items: [
+        { q: 'DQ filed on wrong heat or lane', a: 'Referee can overturn the call. Overturned DQs stay in the record — cannot be deleted.' },
+        { q: 'DQ stuck in pending', a: 'Check CJ has co-signed. If no CJ connected, DQ waits in CJ queue.' },
+        { q: 'False start filed incorrectly', a: 'Starter or Referee can dismiss from referee page.' },
+      ]},
+      { emoji: '📱', title: 'Device / Browser', items: [
+        { q: 'Notifications not working', a: 'Device must allow notifications for the browser. Settings → Browser → Notifications → allow dqsync.app. Then re-join the meet.' },
+        { q: 'Page not loading', a: 'Pull to refresh or hard reload. If offline, DQSync resumes automatically when WiFi returns.' },
+        { q: "QR code won't scan", a: 'Increase screen brightness on Agent laptop. Try typing PIN manually instead.' },
+      ]},
+      { emoji: '🔧', title: 'Agent / Admin', items: [
+        { q: 'Wrong Now Swimming showing', a: "Meet Maestro is source of truth for current heat. Restart timing file watcher from Admin if MM shows correct heat but DQSync doesn't match." },
+        { q: 'How to lock a meet', a: 'Admin → Lock Meet. Makes all officiating screens read-only. Use at meet end.' },
+        { q: 'How to export DQs', a: 'Admin → Export DQs. Copies plain text report to clipboard.' },
+        { q: 'How to re-import meet details', a: 'Admin → Update Meet File. Re-reads the meet folder and updates swimmer names. Use if coaches made substitutions after setup.' },
+      ]},
+    ];
+
+    const helpOverlay = document.getElementById('help-overlay');
+    const helpContent = document.getElementById('help-content');
+
+    function renderHelp() {
+      helpContent.innerHTML = HELP_CATEGORIES.map((cat) => {
+        const items = cat.items.map((it) =>
+          `<div class="help-item">
+             <div class="help-q">${escapeHtml(it.q)}</div>
+             <div class="help-a">${escapeHtml(it.a)}</div>
+           </div>`).join('');
+        return `<div class="help-cat">
+            <button type="button" class="help-cat-header">
+              <span class="hc-emoji">${cat.emoji}</span>
+              <span class="hc-label">${escapeHtml(cat.title)}</span>
+              <span class="help-cat-chevron">▾</span>
+            </button>
+            <div class="help-cat-body">${items}</div>
+          </div>`;
+      }).join('');
+      // Each header toggles its own category open/closed. All collapsed by default.
+      helpContent.querySelectorAll('.help-cat-header').forEach((btn) => {
+        btn.addEventListener('click', () => btn.parentElement.classList.toggle('open'));
+      });
+    }
+    renderHelp();
+
+    function openHelp()  { helpOverlay.classList.add('visible'); }
+    function closeHelp() { helpOverlay.classList.remove('visible'); }
+
+    document.getElementById('admin-help-btn').addEventListener('click', openHelp);
+    document.getElementById('help-close').addEventListener('click', closeHelp);
+    helpOverlay.addEventListener('click', (e) => { if (e.target === helpOverlay) closeHelp(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && helpOverlay.classList.contains('visible')) closeHelp();
     });
 
     // ── On load: restore saved settings ──────────────────────────────────────
