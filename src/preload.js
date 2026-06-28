@@ -27,13 +27,14 @@ contextBridge.exposeInMainWorld("agent", {
   getCodesets: () => ipcRenderer.invoke("get-codesets"),
   setCodeset: (codesetId) => ipcRenderer.invoke("set-codeset", codesetId),
   setZones: (zones) => ipcRenderer.invoke("set-zones", zones),
+  setLaneCount: (lanes) => ipcRenderer.invoke("set-lane-count", lanes),
   setParentViewEnabled: (enabled) => ipcRenderer.invoke("set-parent-view-enabled", enabled),
   exportDqs: () => ipcRenderer.invoke("export-dqs"),
 
   // New Meet Setup Wizard
   wizardSelectFolder: () => ipcRenderer.invoke("wizard-select-folder"),
   wizardBrowseFile: (which) => ipcRenderer.invoke("wizard-browse-file", which),
-  wizardCreateMeet: (meetType, timingSystemPin) => ipcRenderer.invoke("wizard-create-meet", meetType, timingSystemPin),
+  wizardCreateMeet: (opts) => ipcRenderer.invoke("wizard-create-meet", opts),
   wizardStartWatching: () => ipcRenderer.invoke("wizard-start-watching"),
   copyToClipboard: (text) => ipcRenderer.invoke("copy-to-clipboard", text),
 

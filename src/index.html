@@ -448,6 +448,36 @@
       color: #94a3b8; font-size: 11px; font-style: italic; line-height: 1.45; margin-top: 10px;
     }
 
+    /* ── Meet Options step (Step 3) ── */
+    .wiz-sec-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #00c2e0; font-weight: 700; margin: 4px 0 8px;
+    }
+    .wiz-input {
+      width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #334155;
+      background: #0f2040; color: #fff; font-size: 14px; font-family: inherit; outline: none;
+    }
+    .wiz-input:focus { border-color: #00c2e0; }
+    .wiz-input::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+    .wiz-cs-opt {
+      padding: 10px; border-radius: 9px; border: 1px solid #1e293b; background: #0a1628;
+      color: #cbd5e1; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .wiz-cs-opt:hover { border-color: rgba(0,194,224,0.4); }
+    .wiz-cs-opt.selected { border-color: #00c2e0; background: rgba(0,194,224,0.12); color: #fff; }
+
+    /* ── Admin: Meet Settings section ── */
+    .meet-settings-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+      color: #00c2e0; font-family: "Consolas","SF Mono",monospace; margin: 22px 0 12px;
+    }
+    .settings-note {
+      font-size: 11px; color: #64748b; font-style: italic; line-height: 1.45;
+      margin: 4px 0 8px;
+    }
+    #admin-lanes-saved { font-size: 11px; color: #34d399; }
+
     /* ── Auto-update overlay ── */
     #update-overlay {
       position: fixed;
@@ -648,7 +678,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.6</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.3.0</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -735,6 +765,54 @@
         <div class="conn-meet" id="admin-meet" style="margin-top:0;">Meet</div>
         <div class="pills" id="admin-pills" style="margin-top:12px;"></div>
         <p style="font-size:10px;color:#475569;margin-top:8px;">Tap a PIN to show its QR code</p>
+      </div>
+
+      <!-- ═══ TOP SECTION — Meet Actions ═══ -->
+      <div class="section-label">Meet Actions</div>
+      <button class="admin-action" id="lock-btn">
+        <span class="ai-ico"><span class="la-dot green" id="lock-dot"></span></span>
+        <span class="ai-text"><span id="lock-text">Meet is active</span><div class="ai-sub" id="lock-sub">Tap to lock — officials can't submit DQs</div></span>
+      </button>
+      <button class="admin-action" id="export-btn">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </span>
+        <span class="ai-text">Export DQs<div class="ai-sub">Save the confirmed DQ report as .txt or .csv</div></span>
+      </button>
+      <button class="admin-action" id="admin-update-file">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </span>
+        <span class="ai-text">Re-import meet details<div class="ai-sub">Re-imports heat sheet and swimmer names from meet_details.json — use if coaches made substitutions after initial setup.</div></span>
+      </button>
+      <button class="admin-action" id="admin-change-timing">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </span>
+        <span class="ai-text">Change meet folder<div class="ai-sub" id="admin-change-timing-sub">Point DQSync at a different Time Drops meet folder</div></span>
+      </button>
+      <button class="admin-action danger" id="admin-disconnect">
+        <span class="ai-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </span>
+        <span class="ai-text">Disconnect meet<div class="ai-sub">Stop watching &amp; return to launch — meet stays intact</div></span>
+      </button>
+
+      <!-- ═══ BOTTOM SECTION — Meet Settings (editable overrides) ═══ -->
+      <div class="meet-settings-label">Meet Settings</div>
+
+      <!-- Parent View + Parent PIN -->
+      <div class="admin-card">
+        <div class="section-label" style="margin:0 0 10px;">Parent View</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+          <p style="font-size:11px;color:#64748b;margin:0;line-height:1.4;flex:1;min-width:0;">
+            Allow parents to find this meet at dqsync.app/parent and dqsync.app/live
+          </p>
+          <label class="pv-switch">
+            <input type="checkbox" id="parent-view-toggle" />
+            <span class="pv-track"></span>
+          </label>
+        </div>
 
         <!-- Parent PIN (Time Drops) — editable in case it was skipped at setup -->
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;">
@@ -754,6 +832,17 @@
             <button class="wiz-btn" id="admin-parent-pin-save" style="flex:1;padding:8px;font-size:13px;">Save</button>
           </div>
         </div>
+      </div>
+
+      <!-- Lanes + Codeset -->
+      <div class="admin-card">
+        <div class="section-label" style="margin:0 0 6px;">Lanes</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="admin-lanes-input" type="number" min="4" max="10" inputmode="numeric"
+            style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+          <button class="wiz-btn" id="admin-lanes-save" style="width:auto;padding:8px 16px;font-size:13px;">Save</button>
+          <span id="admin-lanes-saved" style="display:none;">Saved ✓</span>
+        </div>
 
         <div style="margin-top:16px;">
           <div class="section-label" style="margin:0 0 8px;">Codeset</div>
@@ -764,54 +853,9 @@
         </div>
       </div>
 
-      <!-- Parent View -->
-      <div class="section-label" style="margin-top:20px;">Parent View</div>
-      <div class="admin-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
-          <p style="font-size:11px;color:#64748b;margin:0;line-height:1.4;flex:1;min-width:0;">
-            Allow parents to find this meet at dqsync.app/parent
-          </p>
-          <label class="pv-switch">
-            <input type="checkbox" id="parent-view-toggle" />
-            <span class="pv-track"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="section-label">Actions</div>
-      <button class="admin-action" id="lock-btn">
-        <span class="ai-ico"><span class="la-dot green" id="lock-dot"></span></span>
-        <span class="ai-text"><span id="lock-text">Meet is active</span><div class="ai-sub" id="lock-sub">Tap to lock — officials can't submit DQs</div></span>
-      </button>
-      <button class="admin-action" id="export-btn">
-        <span class="ai-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </span>
-        <span class="ai-text">Export DQs<div class="ai-sub">Save the confirmed DQ report as .txt or .csv</div></span>
-      </button>
-      <button class="admin-action" id="admin-update-file">
-        <span class="ai-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
-        </span>
-        <span class="ai-text">Update meet file<div class="ai-sub">Re-imports heat sheet and swimmer names from meet_details.json — use if coaches made substitutions after initial setup.</div></span>
-      </button>
-      <button class="admin-action" id="admin-change-timing">
-        <span class="ai-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </span>
-        <span class="ai-text">Change meet folder<div class="ai-sub" id="admin-change-timing-sub">Point DQSync at a different Time Drops meet folder</div></span>
-      </button>
-      <button class="admin-action danger" id="admin-disconnect">
-        <span class="ai-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-        </span>
-        <span class="ai-text">Disconnect meet<div class="ai-sub">Stop watching &amp; return to launch — meet stays intact</div></span>
-      </button>
-
       <!-- Zones -->
-      <div class="section-label" style="margin-top:20px;">Zones</div>
       <div class="admin-card">
+        <div class="section-label" style="margin:0 0 8px;">Zones</div>
         <p style="font-size:11px;color:#64748b;margin:0 0 10px;line-height:1.4;">
           Where S&amp;T judges &amp; referees stand. Officials pick their zone on join.
         </p>
@@ -826,6 +870,8 @@
         <button class="btn btn-primary" id="zone-save" style="margin-top:12px;">Save zones</button>
         <div id="zone-saved">Saved ✓</div>
       </div>
+
+      <p class="settings-note">Changes here take effect immediately. Officials may need to refresh their page.</p>
 
       <!-- Developer tools -->
       <div class="section-label" style="margin-top:20px;">Developer tools</div>
@@ -863,7 +909,7 @@
       <button class="wiz-back" id="wiz-back">← Back</button>
       <div class="wiz-steps" id="wiz-dots">
         <div class="wiz-dot"></div><div class="wiz-dot"></div>
-        <div class="wiz-dot"></div><div class="wiz-dot"></div>
+        <div class="wiz-dot"></div><div class="wiz-dot"></div><div class="wiz-dot"></div>
       </div>
     </div>
 
@@ -871,7 +917,7 @@
 
       <!-- Step 1 — Select Meet Folder -->
       <div class="wiz-step" data-step="1">
-        <div class="wiz-kicker">Step 1 of 4</div>
+        <div class="wiz-kicker">Step 1 of 5</div>
         <div class="wiz-title">Select Time Drops Meet Folder</div>
         <div class="wiz-sub">Select the folder containing your meet files. DQSync will find everything it needs.</div>
         <button class="wiz-btn" id="wiz-browse-folder">Browse…</button>
@@ -886,20 +932,6 @@
           <div class="wiz-checks" id="wiz-folder-checks"></div>
           <div class="wiz-card" id="wiz-folder-card"></div>
 
-          <!-- Time Drops PIN (optional) — parents use it to view their swimmer's DQs -->
-          <div style="margin-top:4px;">
-            <div class="section-label" style="margin:0 0 4px;">Time Drops PIN
-              <span style="color:#64748b;font-weight:600;text-transform:none;letter-spacing:0;">(optional)</span>
-            </div>
-            <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:8px;">
-              Parents use this PIN to view their swimmer's DQs on DQSync. Same PIN they use for Time Drops.
-            </div>
-            <input id="wiz-timing-pin" type="text" inputmode="numeric" maxlength="4"
-              placeholder="4-digit PIN — leave blank to skip"
-              style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #334155;background:#0f2040;color:#fff;font-size:15px;font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
-            <div class="wiz-err" id="wiz-timing-pin-err" style="display:none;"></div>
-          </div>
-
           <div style="display:flex;gap:10px;margin-top:16px;">
             <button class="wiz-btn ghost" id="wiz-folder-change" style="flex:1;">Change folder</button>
             <button class="wiz-btn" id="wiz-folder-next" style="flex:1;">Continue →</button>
@@ -909,7 +941,7 @@
 
       <!-- Step 2 — Meet Type -->
       <div class="wiz-step" data-step="2">
-        <div class="wiz-kicker">Step 2 of 4</div>
+        <div class="wiz-kicker">Step 2 of 5</div>
         <div class="wiz-title">Meet type</div>
         <div class="wiz-sub">Choose how DQs are approved for this meet.</div>
         <div class="wiz-type-grid">
@@ -959,18 +991,85 @@
         <button class="wiz-btn" id="wiz-type-next">Continue →</button>
       </div>
 
-      <!-- Step 3 — Review & Create -->
+      <!-- Step 3 — Meet Options -->
       <div class="wiz-step" data-step="3">
-        <div class="wiz-kicker">Step 3 of 4</div>
-        <div class="wiz-title">Review &amp; create</div>
+        <div class="wiz-kicker">Step 3 of 5</div>
+        <div class="wiz-title">Meet options</div>
+        <div class="wiz-sub">Confirm how this meet is configured. You can change any of these later in Admin.</div>
+
+        <!-- Section A: Parent & Live Results -->
+        <div class="wiz-sec-label">Parent &amp; Live Results</div>
+        <div class="wiz-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+            <p style="font-size:12px;color:#cbd5e1;margin:0;line-height:1.4;flex:1;min-width:0;">
+              Allow parents to find this meet at dqsync.app/parent and dqsync.app/live
+            </p>
+            <label class="pv-switch">
+              <input type="checkbox" id="wiz-parent-view" />
+              <span class="pv-track"></span>
+            </label>
+          </div>
+          <div id="wiz-parent-pin-wrap" style="display:none;margin-top:14px;">
+            <div class="section-label" style="margin:0 0 6px;">Time Drops PIN — parents use this to find the meet</div>
+            <input id="wiz-timing-pin" type="text" inputmode="numeric" maxlength="4"
+              placeholder="4-digit PIN — leave blank to skip"
+              class="wiz-input" style="font-family:'Consolas','SF Mono',monospace;letter-spacing:0.12em;" />
+            <div class="wiz-err" id="wiz-timing-pin-err" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Section B: Meet Configuration -->
+        <div class="wiz-sec-label">Meet Configuration</div>
+        <div class="wiz-card">
+          <div class="section-label" style="margin:0 0 8px;">Codeset</div>
+          <div class="cs-grid">
+            <button type="button" class="wiz-cs-opt" data-cs-name="LSA 2023">LSA 2023</button>
+            <button type="button" class="wiz-cs-opt" data-cs-name="NFHS / HY-Tek">NFHS · HY-Tek</button>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px;">
+            <div style="flex:1;min-width:0;">
+              <div class="section-label" style="margin:0 0 6px;">Lanes — pre-filled from meet file</div>
+              <input id="wiz-lanes" type="number" min="4" max="10" inputmode="numeric" class="wiz-input" />
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="section-label" style="margin:0 0 6px;">Meet date</div>
+              <input id="wiz-date" type="date" class="wiz-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section C: Zones -->
+        <div class="wiz-sec-label">Zones</div>
+        <div class="wiz-card">
+          <p style="font-size:11px;color:#64748b;margin:0 0 10px;line-height:1.4;">
+            Where S&amp;T judges &amp; referees stand. Officials pick their zone on join.
+          </p>
+          <div class="zone-grid" id="wiz-zone-grid"></div>
+          <div id="wiz-zone-custom" style="display:none;margin-top:12px;">
+            <div id="wiz-zone-custom-list"></div>
+            <div class="zc-add">
+              <input id="wiz-zone-custom-input" type="text" placeholder="e.g. Turn side · Lanes 1-3" />
+              <button id="wiz-zone-custom-add" type="button">Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="wiz-err" id="wiz-options-err"></div>
+        <button class="wiz-btn" id="wiz-options-next">Continue →</button>
+      </div>
+
+      <!-- Step 4 — Review & Confirm -->
+      <div class="wiz-step" data-step="4">
+        <div class="wiz-kicker">Step 4 of 5</div>
+        <div class="wiz-title">Review &amp; confirm</div>
         <div class="wiz-sub">Confirm the details below, then create the meet.</div>
         <div class="wiz-card" id="wiz-review-card"></div>
         <div class="wiz-err" id="wiz-create-err"></div>
         <button class="wiz-btn" id="wiz-create-btn">Create Meet</button>
       </div>
 
-      <!-- Step 4 — Done / PINs -->
-      <div class="wiz-step" data-step="4">
+      <!-- Step 5 — Done / PINs -->
+      <div class="wiz-step" data-step="5">
         <div id="wiz-creating" style="text-align:center;padding:40px 0;">
           <div class="wiz-spinner"></div>
           <div style="font-size:13px;color:#94a3b8;" id="wiz-creating-msg">Creating meet…</div>
@@ -978,6 +1077,7 @@
         <div id="wiz-done" style="display:none;">
           <div class="wiz-kicker" style="color:#34d399;">Meet created ✓</div>
           <div class="wiz-title" id="wiz-done-name">Meet</div>
+          <div id="wiz-done-recap" style="font-size:11px;color:#64748b;margin:-2px 0 14px;line-height:1.45;"></div>
           <div class="wiz-sub">Share these credentials with your officials. The Admin PIN is shown only here.</div>
 
           <div class="wiz-pin-card">
@@ -1130,6 +1230,7 @@
       renderParentView();
       loadCodesets();
       loadZones();
+      renderLanes();
       showScreen('main');
     }
 
@@ -1415,6 +1516,35 @@
       }
     });
 
+    // ── Lane count (Meet Settings) ───────────────────────────────────────────────
+    const adminLanesInput = document.getElementById('admin-lanes-input');
+    const adminLanesSaved = document.getElementById('admin-lanes-saved');
+
+    function renderLanes() {
+      const lc = currentMeetInfo && currentMeetInfo.laneCount;
+      adminLanesInput.value = (lc != null && lc !== '') ? lc : '';
+      adminLanesSaved.style.display = 'none';
+    }
+    adminLanesInput.addEventListener('input', () => { adminLanesSaved.style.display = 'none'; });
+
+    document.getElementById('admin-lanes-save').addEventListener('click', async () => {
+      adminLanesSaved.style.display = 'none';
+      const n = parseInt(adminLanesInput.value, 10);
+      if (!Number.isInteger(n) || n < 4 || n > 10) {
+        addLog({ msg: 'Lanes must be a number from 4 to 10.', type: 'warn', time: nowTime() });
+        return;
+      }
+      const res = await window.agent.setLaneCount(n);
+      if (res && res.success) {
+        if (currentMeetInfo) currentMeetInfo.laneCount = res.laneCount;
+        adminLanesInput.value = res.laneCount;
+        adminLanesSaved.style.display = 'inline';
+        addLog({ msg: `Lanes set to ${res.laneCount}`, type: 'success', time: nowTime() });
+      } else {
+        addLog({ msg: `Could not change lanes: ${(res && res.error) || 'unknown error'}`, type: 'error', time: nowTime() });
+      }
+    });
+
     // ── Navigation: Admin ↔ Main ────────────────────────────────────────────────
     document.getElementById('admin-btn').addEventListener('click', () => showScreen('admin'));
     document.getElementById('admin-back').addEventListener('click', () => showScreen('main'));
@@ -1647,7 +1777,19 @@
     const wizDots     = Array.from(document.getElementById('wiz-dots').children);
     const wizSteps    = Array.from(document.querySelectorAll('.wiz-step'));
 
-    const wiz = { step: 1, summary: null, config: null, folder: null, details: null, timing: null, timingPin: null, meetType: null, created: null };
+    const wiz = {
+      step: 1, summary: null, config: null, folder: null, details: null, timing: null,
+      meetType: null, created: null,
+      // Step 3 — Meet Options (user-confirmed; written to the meet doc on create)
+      parentViewEnabled: false, timingPin: null, codesetName: 'LSA 2023',
+      laneCount: null, date: null, zones: [], zoneSel: 'none', zoneWorking: [],
+    };
+
+    function todayYmd() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
 
     function fmtDate(d) {
       if (!d) return '—';
@@ -1673,9 +1815,10 @@
         d.classList.toggle('active', i + 1 === n);
         d.classList.toggle('done', i + 1 < n);
       });
-      wizBack.style.visibility = n >= 4 ? 'hidden' : 'visible';
+      wizBack.style.visibility = n >= 5 ? 'hidden' : 'visible';
       if (n === 2) enterMeetType();
-      if (n === 3) renderReview();
+      if (n === 3) enterOptions();
+      if (n === 4) renderReview();
     }
 
     newMeetBtn.addEventListener('click', showWizard);
@@ -1752,6 +1895,7 @@
       wiz.timing   = res.timing  || { ok: false, missing: true };
       wiz.summary  = wiz.details.ok ? wiz.details.summary : null;
       wiz.config   = wiz.timing.ok ? (wiz.timing.config || null) : null;
+      if (wiz.summary) initOptionsDefaults();
       folderPathEl.textContent = res.folder;
       renderFolderState();
       folderSummary.style.display = 'block';
@@ -1765,6 +1909,7 @@
       if (which === 'details') {
         wiz.details = res.ok ? { ok: true, summary: res.summary } : { ok: false, error: res.error };
         wiz.summary = res.ok ? res.summary : null;
+        if (wiz.summary) initOptionsDefaults();
       } else {
         wiz.timing = res.ok ? { ok: true, config: res.config } : { ok: false, error: res.error };
         wiz.config = res.ok ? (res.config || null) : null;
@@ -1776,31 +1921,154 @@
     document.getElementById('wiz-folder-change').addEventListener('click', pickMeetFolder);
     folderNext.addEventListener('click', () => {
       if (folderNext.disabled) return;
-      if (captureTimingPin()) gotoStep(2);
+      gotoStep(2);
     });
 
-    // Time Drops / parent PIN (optional). Strip non-digits as the user types.
-    const timingPinInput = document.getElementById('wiz-timing-pin');
-    const timingPinErr   = document.getElementById('wiz-timing-pin-err');
+    // ── Step 3 (Meet Options) — controls + state ─────────────────────────────
+    const wizParentView    = document.getElementById('wiz-parent-view');
+    const wizParentPinWrap = document.getElementById('wiz-parent-pin-wrap');
+    const wizLanesInput    = document.getElementById('wiz-lanes');
+    const wizDateInput     = document.getElementById('wiz-date');
+    const timingPinInput   = document.getElementById('wiz-timing-pin');
+    const timingPinErr     = document.getElementById('wiz-timing-pin-err');
+    const wizCsOpts        = Array.from(document.querySelectorAll('.wiz-cs-opt'));
+
+    // Seed Step-3 defaults from the parsed meet file (called when details load).
+    function initOptionsDefaults() {
+      const s = wiz.summary || {};
+      const lc = Number(s.laneCount);
+      wiz.laneCount = (Number.isFinite(lc) && lc > 0) ? Math.max(4, Math.min(10, lc)) : 6;
+      wiz.date = (s.meetStartDate && /^\d{4}-\d{2}-\d{2}/.test(s.meetStartDate))
+        ? s.meetStartDate.slice(0, 10) : todayYmd();
+      wiz.codesetName = 'LSA 2023';
+      wiz.parentViewEnabled = false;
+      wiz.timingPin = null;
+      wiz.zoneSel = 'none';
+      wiz.zoneWorking = [];
+    }
+
+    // Strip non-digits from the Time Drops PIN as the user types.
     timingPinInput.addEventListener('input', () => {
       timingPinInput.value = timingPinInput.value.replace(/\D/g, '').slice(0, 4);
       timingPinErr.style.display = 'none';
     });
 
-    // Capture + validate the PIN before leaving Step 2. Blank = skip (null);
-    // anything entered must be exactly 4 digits. Returns false to block advancing.
-    function captureTimingPin() {
-      const raw = (timingPinInput.value || '').replace(/\D/g, '');
-      timingPinErr.style.display = 'none';
-      if (raw.length === 0) { wiz.timingPin = null; return true; }
-      if (raw.length !== 4) {
-        timingPinErr.textContent = 'Time Drops PIN must be exactly 4 digits (or leave it blank).';
-        timingPinErr.style.display = 'block';
-        return false;
+    // Parent View toggle — reveals the Time Drops PIN field only when ON.
+    wizParentView.addEventListener('change', () => {
+      wiz.parentViewEnabled = wizParentView.checked;
+      wizParentPinWrap.style.display = wizParentView.checked ? 'block' : 'none';
+    });
+
+    // Codeset selector (wizard-local; distinct from the Admin .cs-opt buttons).
+    function renderWizCodeset() {
+      wizCsOpts.forEach((b) => b.classList.toggle('selected', b.dataset.csName === wiz.codesetName));
+    }
+    wizCsOpts.forEach((b) => b.addEventListener('click', () => {
+      wiz.codesetName = b.dataset.csName; renderWizCodeset();
+    }));
+
+    // Zone selector (wizard-local; mirrors the Admin zone grid + custom editor).
+    function renderWizZones() {
+      const opts = [...ZONE_TEMPLATES, { id: 'custom', label: 'Custom', zones: null }];
+      const grid = document.getElementById('wiz-zone-grid');
+      grid.innerHTML = opts.map((o) => {
+        const selected = wiz.zoneSel === o.id;
+        const chips = o.id === 'custom'
+          ? `<div class="zc-chips"><span class="zone-chip">Your own labels</span></div>`
+          : (o.zones.length === 0
+              ? `<div class="zc-chips"><span class="zone-chip">No zone picker</span></div>`
+              : `<div class="zc-chips">${o.zones.map((z) => `<span class="zone-chip">${escapeHtml(z)}</span>`).join('')}</div>`);
+        return `<button type="button" class="zone-card${o.id === 'custom' ? ' custom' : ''}${selected ? ' selected' : ''}" data-zone-id="${o.id}">
+          <div class="zc-label">${escapeHtml(o.label)}</div>${chips}
+        </button>`;
+      }).join('');
+      grid.querySelectorAll('.zone-card').forEach((btn) => {
+        btn.addEventListener('click', () => selectWizZone(btn.dataset.zoneId));
+      });
+      const customWrap = document.getElementById('wiz-zone-custom');
+      customWrap.style.display = wiz.zoneSel === 'custom' ? 'block' : 'none';
+      if (wiz.zoneSel === 'custom') {
+        const list = document.getElementById('wiz-zone-custom-list');
+        list.innerHTML = wiz.zoneWorking.length === 0
+          ? `<p style="font-size:12px;color:#475569;">No zones yet — add one below.</p>`
+          : wiz.zoneWorking.map((z, i) =>
+              `<div class="zc-row"><span>${escapeHtml(z)}</span><button type="button" data-zone-rm="${i}" aria-label="Remove">×</button></div>`).join('');
+        list.querySelectorAll('[data-zone-rm]').forEach((b) => {
+          b.addEventListener('click', () => { wiz.zoneWorking.splice(Number(b.dataset.zoneRm), 1); renderWizZones(); });
+        });
       }
-      wiz.timingPin = raw;
+    }
+    function selectWizZone(id) {
+      if (id === 'custom') {
+        wiz.zoneSel = 'custom';
+      } else {
+        const t = ZONE_TEMPLATES.find((x) => x.id === id);
+        wiz.zoneWorking = t ? [...t.zones] : [];
+        wiz.zoneSel = id;
+      }
+      renderWizZones();
+    }
+    function addWizCustomZone() {
+      const inp = document.getElementById('wiz-zone-custom-input');
+      const z = inp.value.trim();
+      if (!z || wiz.zoneWorking.includes(z)) { inp.value = ''; return; }
+      wiz.zoneWorking.push(z); inp.value = ''; renderWizZones();
+    }
+    document.getElementById('wiz-zone-custom-add').addEventListener('click', addWizCustomZone);
+    document.getElementById('wiz-zone-custom-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addWizCustomZone(); }
+    });
+
+    // Populate the Step-3 controls from wiz state each time the step is shown.
+    function enterOptions() {
+      wizLanesInput.value = wiz.laneCount != null ? wiz.laneCount : '';
+      wizDateInput.value = wiz.date || '';
+      wizParentView.checked = !!wiz.parentViewEnabled;
+      wizParentPinWrap.style.display = wiz.parentViewEnabled ? 'block' : 'none';
+      timingPinInput.value = wiz.timingPin || '';
+      timingPinErr.style.display = 'none';
+      document.getElementById('wiz-options-err').style.display = 'none';
+      renderWizCodeset();
+      renderWizZones();
+    }
+
+    // Validate + capture the Step-3 options before advancing to Review.
+    function captureOptions() {
+      const pinErr = timingPinErr;
+      pinErr.style.display = 'none';
+      document.getElementById('wiz-options-err').style.display = 'none';
+
+      // Lanes — clamp to 4–10 (fall back to current/6 when blank).
+      let lanes = parseInt(wizLanesInput.value, 10);
+      if (!Number.isInteger(lanes)) lanes = wiz.laneCount || 6;
+      wiz.laneCount = Math.max(4, Math.min(10, lanes));
+
+      // Date — keep a valid YYYY-MM-DD, else fall back to today.
+      const dv = wizDateInput.value;
+      wiz.date = /^\d{4}-\d{2}-\d{2}$/.test(dv) ? dv : todayYmd();
+
+      // Parent View + Time Drops PIN (PIN only matters when Parent View is on).
+      wiz.parentViewEnabled = !!wizParentView.checked;
+      if (wiz.parentViewEnabled) {
+        const raw = (timingPinInput.value || '').replace(/\D/g, '');
+        if (raw.length !== 0 && raw.length !== 4) {
+          pinErr.textContent = 'Time Drops PIN must be exactly 4 digits (or leave it blank).';
+          pinErr.style.display = 'block';
+          return false;
+        }
+        wiz.timingPin = raw.length === 4 ? raw : null;
+      } else {
+        wiz.timingPin = null;
+      }
+
+      // Zones — the working list is the chosen template's zones (or custom).
+      wiz.zones = [...wiz.zoneWorking];
       return true;
     }
+
+    document.getElementById('wiz-options-next').addEventListener('click', () => {
+      if (captureOptions()) gotoStep(4);
+    });
 
     // Step 2: meet type
     const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
@@ -1831,38 +2099,51 @@
     }
     document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(3));
 
-    // Step 3: review
+    // Step 4: review & confirm — full recap of everything chosen so far.
+    function codesetLabel(name) {
+      return name === 'NFHS / HY-Tek' ? 'NFHS · HY-Tek' : (name || 'LSA 2023');
+    }
     function renderReview() {
       const s = wiz.summary || {};
       const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
-      const timingLabel = wiz.config
-        ? `${wiz.config.timingSystemType || 'Timing system'}${wiz.config.numberOfLanes ? ` · ${wiz.config.numberOfLanes} lanes` : ''}`
-        : 'Connected';
+      const zonesLabel = (wiz.zoneWorking && wiz.zoneWorking.length) ? wiz.zoneWorking.join(' · ') : 'No Zones';
+      const parentLabel = wiz.parentViewEnabled
+        ? (wiz.timingPin ? `Enabled (PIN: ${wiz.timingPin})` : 'Enabled')
+        : 'Disabled';
       rows(document.getElementById('wiz-review-card'), [
         ['Meet name', s.meetName || '—'],
-        ['Date', fmtDate(s.meetStartDate)],
-        ['Host team', s.hostTeamName || '—'],
+        ['Date', fmtDate(wiz.date)],
+        ['Host team', s.hostTeamName || (s.hostAbbr || '—')],
         [s.visitingTeams && s.visitingTeams.length > 1 ? 'Visiting teams' : 'Visiting team', visiting],
-        ['Lanes', s.laneCount || '—'],
         ['Meet type', wiz.meetType === 'standard' ? 'Standard Meet' : 'Dual Meet'],
-        ['Events', s.eventCount],
-        ['Timing system', timingLabel],
+        ['Lanes', wiz.laneCount || '—'],
+        ['Codeset', codesetLabel(wiz.codesetName)],
+        ['Zones', zonesLabel],
+        ['Parent View', parentLabel],
       ]);
     }
 
-    // Step 3 → 4: create
+    // Step 4 → 5: create
     const createErrEl = document.getElementById('wiz-create-err');
     const creatingEl  = document.getElementById('wiz-creating');
     const doneEl      = document.getElementById('wiz-done');
 
     document.getElementById('wiz-create-btn').addEventListener('click', async () => {
       createErrEl.style.display = 'none';
-      gotoStep(4);
+      gotoStep(5);
       creatingEl.style.display = 'block';
       doneEl.style.display = 'none';
-      const res = await window.agent.wizardCreateMeet(wiz.meetType || 'dual', wiz.timingPin || null);
+      const res = await window.agent.wizardCreateMeet({
+        meetType: wiz.meetType || 'dual',
+        parentViewEnabled: !!wiz.parentViewEnabled,
+        timingSystemPin: wiz.timingPin || null,
+        codesetName: wiz.codesetName || null,
+        laneCount: wiz.laneCount || null,
+        date: wiz.date || null,
+        zones: wiz.zones || [],
+      });
       if (!res || !res.success) {
-        gotoStep(3);
+        gotoStep(4);
         createErrEl.textContent = (res && res.error) || 'Could not create the meet.';
         createErrEl.style.display = 'block';
         return;
@@ -1873,6 +2154,18 @@
 
     function renderDone(res) {
       document.getElementById('wiz-done-name').textContent = res.meetName || 'Meet created';
+      // Small muted recap: meet name · date · teams · meet type · lanes.
+      const s = wiz.summary || {};
+      const teams = [];
+      if (s.hostTeamName || s.hostAbbr) teams.push(s.hostTeamName || s.hostAbbr);
+      if (s.visitingTeams && s.visitingTeams.length) teams.push(...s.visitingTeams);
+      const recap = [
+        fmtDate(wiz.date),
+        teams.length ? teams.join(', ') : null,
+        wiz.meetType === 'standard' ? 'Standard' : 'Dual',
+        `${wiz.laneCount || res.laneCount || '—'} lanes`,
+      ].filter(Boolean).join(' · ');
+      document.getElementById('wiz-done-recap').textContent = recap;
       document.getElementById('wiz-pin-official').textContent = res.pin;
       document.getElementById('wiz-pin-admin').textContent = res.adminPin;
       document.getElementById('wiz-pin-coach').textContent = res.coachWord;

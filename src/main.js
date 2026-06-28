@@ -548,6 +548,7 @@ async function buildMeetInfo(data) {
     currentStroke: data.currentStroke ?? null,
     status:        data.status ?? "active",
     parentViewEnabled: data.parentViewEnabled ?? false,
+    laneCount:     data.laneCount ?? null,
     codesetId:     data.codesetId ?? null,
     zones:         Array.isArray(data.zones)
       ? data.zones.filter((z) => typeof z === "string" && z.trim())
@@ -804,6 +805,25 @@ ipcMain.handle('set-zones', async (_event, zones) => {
     return { success: true, zones: clean };
   } catch (err) {
     log(`❌ Could not update zones: ${err.message}`, "error");
+    return { success: false, error: err.message };
+  }
+});
+
+// Admin → "Lanes": override the pool's lane count on the meet doc. Same
+// laneCount field the wizard writes at creation and role pages read. Validated
+// to an integer 4–10.
+ipcMain.handle('set-lane-count', async (_event, lanes) => {
+  if (!meetId) return { success: false, error: 'No meet connected.' };
+  const n = Math.round(Number(lanes));
+  if (!Number.isFinite(n) || n < 4 || n > 10) {
+    return { success: false, error: 'Lanes must be a number from 4 to 10.' };
+  }
+  try {
+    await updateDoc(doc(db, 'meets', meetId), { laneCount: n });
+    log(`🏊 Lane count set to ${n}`, "success");
+    return { success: true, laneCount: n };
+  } catch (err) {
+    log(`❌ Could not change lane count: ${err.message}`, "error");
     return { success: false, error: err.message };
   }
 });
@@ -1101,19 +1121,25 @@ ipcMain.handle("wizard-browse-file", async (_event, which) => {
   return { ...loaded, which, filePath };
 });
 
-// Step 4 → 5: create the meet from the parsed details + chosen meet type, then
-// "connect" the agent to it (set meetId, start heartbeat) exactly as a PIN
-// connect would. Returns the generated PINs + QR data URLs for the UI.
-ipcMain.handle("wizard-create-meet", async (_event, meetType, timingSystemPin) => {
+// Step 4 → 5: create the meet from the parsed details + the wizard's Meet
+// Options (Step 3), then "connect" the agent to it (set meetId, start heartbeat)
+// exactly as a PIN connect would. Returns the generated PINs + QR data URLs.
+ipcMain.handle("wizard-create-meet", async (_event, opts) => {
   if (!wizardParsed) {
     return { success: false, error: "No meet details loaded. Go back to Step 1." };
   }
+  const o = opts || {};
   try {
     if (!auth.currentUser) await signInAnonymously(auth);
 
     const created = await wizard.createMeet(db, wizardParsed, {
-      meetType,
-      timingSystemPin,
+      meetType: o.meetType,
+      timingSystemPin: o.timingSystemPin,
+      parentViewEnabled: o.parentViewEnabled,
+      codesetName: o.codesetName,
+      laneCount: o.laneCount,
+      date: o.date,
+      zones: o.zones,
       agentVersion: app.getVersion(),
     });
 
@@ -1154,7 +1180,10 @@ ipcMain.handle("wizard-create-meet", async (_event, meetType, timingSystemPin) =
       meetType: created.meetType,
       eventCount: wizardParsed.events.length,
       heatCount: wizardParsed.heats.length,
-      laneCount: wizardParsed.laneCount,
+      laneCount: created.laneCount,
+      date: created.date,
+      parentViewEnabled: created.parentViewEnabled,
+      zones: created.zones,
       hostTeamName: wizardParsed.hostTeamName,
       visitingTeams: wizardParsed.visitingTeams,
       qr: { official: officialQr, admin: adminQr, coach: coachQr },

@@ -349,6 +349,24 @@ async function assertAuthorizedTeams(db, teams) {
   );
 }
 
+// Resolve a codeset id from its display name (e.g. "LSA 2023", "NFHS / HY-Tek").
+// Used by the wizard's codeset selector. Returns null if no match (caller then
+// falls back to the default codeset). Case-insensitive, trimmed.
+async function findCodesetIdByName(db, name) {
+  const want = String(name ?? "").trim().toLowerCase();
+  if (!want) return null;
+  try {
+    const snap = await getDocs(collection(db, "codesets"));
+    if (snap.empty) return null;
+    const match = snap.docs.find(
+      (d) => String((d.data() || {}).name ?? "").trim().toLowerCase() === want,
+    );
+    return match ? match.id : null;
+  } catch {
+    return null;
+  }
+}
+
 // Find the default codeset id (LSA 2023) so DQ pages resolve infractions the
 // same way as a web-app-created meet. Codesets are global and already seeded in
 // production by the web app, so we just look them up rather than re-seeding.
@@ -369,8 +387,13 @@ async function findDefaultCodesetId(db) {
  *
  * @param db        Firestore instance
  * @param parsed    result of parseMeetDetails()
- * @param opts      { meetType, createdByName, agentVersion }
- * @returns         { meetId, meetName, pin, adminPin, coachWord, meetType }
+ * @param opts      { meetType, timingSystemPin, parentViewEnabled, codesetName,
+ *                    laneCount, date, zones, createdByName, agentVersion }
+ *                  The wizard's Step-3 options (laneCount, date, zones, codeset,
+ *                  parent view + PIN) are user-confirmed and win over the raw
+ *                  parsed file values.
+ * @returns         { meetId, meetName, pin, adminPin, coachWord, meetType,
+ *                    timingSystemPin, laneCount, date, parentViewEnabled, zones }
  */
 async function createMeet(db, parsed, opts = {}) {
   // Block creation up front if none of the meet's teams are authorized. Throws
@@ -381,7 +404,10 @@ async function createMeet(db, parsed, opts = {}) {
   const pin = generatePin();
   const adminPin = generateAdminPin(pin);
   const coachWord = generateCoachWord();
-  const codesetId = await findDefaultCodesetId(db);
+
+  // Codeset: prefer the wizard's chosen name, else the global default.
+  const codesetId =
+    (await findCodesetIdByName(db, opts.codesetName)) || (await findDefaultCodesetId(db));
 
   // Time Drops / parent PIN: parents enter it at dqsync.app/parent to follow
   // their swimmer's DQs. Optional — keep only an exactly-4-digit string, else null.
@@ -389,10 +415,29 @@ async function createMeet(db, parsed, opts = {}) {
     ? String(opts.timingSystemPin).trim()
     : null;
 
+  // Lane count: user-confirmed value (clamped 4–10) wins over the parsed file,
+  // which falls back to 6 when missing.
+  const optLanes = Number(opts.laneCount);
+  const laneCount = Number.isFinite(optLanes) && optLanes > 0
+    ? Math.max(4, Math.min(10, Math.round(optLanes)))
+    : (parsed.laneCount > 0 ? parsed.laneCount : 6);
+
+  // Date: user-confirmed YYYY-MM-DD wins; else the parsed file's start date.
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(opts.date ?? "").trim())
+    ? String(opts.date).trim()
+    : (parsed.meetStartDate || "");
+
+  // Zones: normalized string[] — same shape the Admin set-zones handler writes.
+  const zones = Array.isArray(opts.zones)
+    ? opts.zones.map((z) => String(z).trim()).filter((z, i, a) => z && a.indexOf(z) === i)
+    : [];
+
+  const parentViewEnabled = !!opts.parentViewEnabled;
+
   // ── 1. Meet doc (mirror of app/referee/create/page.tsx meetData) ──
   const meetData = {
     name: parsed.meetName || "Untitled Meet",
-    date: parsed.meetStartDate || "",
+    date,
     pin,
     adminPin,
     coachWord,
@@ -400,15 +445,15 @@ async function createMeet(db, parsed, opts = {}) {
     // web app's parent view queries against.
     timingSystemPin,
     status: "active",
-    // Parent View is opt-in: the meet director enables it from Admin after
-    // creation so the web /parent page can surface this meet. Default OFF.
-    parentViewEnabled: false,
-    laneCount: parsed.laneCount > 0 ? parsed.laneCount : 6,
+    // Parent View is opt-in — set in the wizard's Meet Options step (or later
+    // from Admin). The web /parent + /live pages read this field.
+    parentViewEnabled,
+    laneCount,
     // meetMode is the field every role page reads. meetType is written too to
     // satisfy the wizard spec; both carry the same "dual" | "standard" value.
     meetMode: meetType,
     meetType,
-    zones: [],
+    zones,
     ...(codesetId ? { codesetId } : {}),
     // Team metadata the coach view + monitor rely on.
     ...(parsed.teams.length > 0 ? { teams: parsed.teams } : {}),
@@ -453,7 +498,10 @@ async function createMeet(db, parsed, opts = {}) {
     await updateDoc(doc(db, "meets", meetId), meetUpdate);
   }
 
-  return { meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType, timingSystemPin };
+  return {
+    meetId, meetName: meetData.name, pin, adminPin, coachWord, meetType,
+    timingSystemPin, laneCount, date, parentViewEnabled, zones,
+  };
 }
 
 /**
