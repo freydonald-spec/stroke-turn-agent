@@ -47,6 +47,10 @@ const HEARTBEAT_MS = 30_000;
 const MEET_DETAILS_NAME  = "meet_details.json";
 const TIMING_CONFIG_NAME = "timing_system_configuration.json";
 
+// meet_details.json gets its own (slightly shorter) debounce — it's written in
+// one pass by Meet Maestro / Time Drops, so 500ms is enough to settle.
+const MEET_DETAILS_DEBOUNCE_MS = 500;
+
 // ── Persistent settings ───────────────────────────────────────────────────────
 // Stored automatically at: C:\Users\<name>\AppData\Roaming\stroke-turn-agent\
 // User never touches this file.
@@ -88,6 +92,8 @@ let watchFolder   = null;   // the Time Drops meet folder being watched
 let heartbeatTimer = null;
 let simulatorMode = false;
 let priorWatchFolder = null; // meet folder watched before simulator mode started
+let meetDetailsTimer = null;    // debounce timer for meet_details.json changes
+let lastMeetDetailsRaw = null;  // raw meet_details.json last imported (to ignore touches)
 
 // New Meet Setup Wizard state — held between wizard steps until the meet is created.
 let wizardParsed = null;        // parsed meet_details.json
@@ -415,19 +421,78 @@ function debouncedChange() {
   debounceTimer = setTimeout(handleChange, DEBOUNCE_MS);
 }
 
+function debouncedMeetDetailsChange() {
+  if (meetDetailsTimer) clearTimeout(meetDetailsTimer);
+  meetDetailsTimer = setTimeout(handleMeetDetailsChange, MEET_DETAILS_DEBOUNCE_MS);
+}
+
+// meet_details.json changed in the watched folder — auto-refresh swimmer names
+// in Firestore (e.g. coach substitutions) without disturbing the live meet.
+// Guarded: only when connected, not simulating, the file's contents actually
+// changed (not just a touch), and the meet isn't locked.
+async function handleMeetDetailsChange() {
+  if (!meetId || !watchFolder || simulatorMode) return;
+
+  const detailsPath = path.join(watchFolder, MEET_DETAILS_NAME);
+
+  let raw;
+  try {
+    raw = fs.readFileSync(detailsPath, "utf8");
+  } catch {
+    log("⚠️ meet_details.json changed but could not be read", "warn");
+    return;
+  }
+
+  // Ignore a touch / re-save that didn't actually change the file's contents.
+  if (raw === lastMeetDetailsRaw) return;
+
+  // Don't mutate heats once the meet is locked (results being finalized). Record
+  // the new contents so we don't re-evaluate the same change on every poll.
+  try {
+    const snap = await getDoc(doc(db, "meets", meetId));
+    if (snap.exists() && snap.data().status === "locked") {
+      lastMeetDetailsRaw = raw;
+      log("🔒 meet_details.json changed but meet is locked — names not refreshed", "warn");
+      return;
+    }
+  } catch { /* couldn't read status → fall through and attempt the refresh */ }
+
+  let parsed;
+  try {
+    parsed = wizard.parseMeetDetails(JSON.parse(raw));
+  } catch {
+    log("⚠️ meet_details.json changed but could not be read", "warn");
+    return;
+  }
+
+  try {
+    await wizard.reimportSwimmerNames(db, meetId, parsed);
+    lastMeetDetailsRaw = raw;
+    log("✅ Meet details updated — swimmer names refreshed", "success");
+  } catch (err) {
+    log(`⚠️ meet_details.json changed but names could not be refreshed: ${err.message}`, "warn");
+  }
+}
+
 // Stop the file watcher if one is running. Safe to call when none is active.
 function stopWatcher() {
   if (watcher) { watcher.close(); watcher = null; }
+  if (meetDetailsTimer) { clearTimeout(meetDetailsTimer); meetDetailsTimer = null; }
 }
 
 // Watch the whole Time Drops meet folder (depth 0 — root files only). The
-// timing_system_configuration.json inside it drives heat advancement, and new
-// session_*.json result files appearing in the same folder are read on demand
-// (see pushPrevHeatResults) when a heat advances.
+// timing_system_configuration.json inside it drives heat advancement, new
+// session_*.json result files are read on demand (see pushPrevHeatResults) when
+// a heat advances, and changes to meet_details.json auto-refresh swimmer names.
 function startWatchingFolder(folderPath) {
   stopWatcher();
   watchFolder = folderPath;
   watchFile = path.join(folderPath, TIMING_CONFIG_NAME);
+  // Seed the meet_details baseline so the first change is compared against real
+  // content — a pure touch with identical contents is then ignored.
+  try {
+    lastMeetDetailsRaw = fs.readFileSync(path.join(folderPath, MEET_DETAILS_NAME), "utf8");
+  } catch { lastMeetDetailsRaw = null; }
   log(`👁️ Watching folder: ${path.basename(folderPath)}`);
   handleChange(); // read current state immediately
   watcher = chokidar.watch(folderPath, {
@@ -438,9 +503,18 @@ function startWatchingFolder(folderPath) {
     ignoreInitial: true,
     depth: 0,
   });
+  // Route each file event by name: meet_details.json → swimmer-name refresh,
+  // everything else (timing config + session result files) → heat pipeline.
+  const routeWatchEvent = (changedPath) => {
+    if (changedPath && path.basename(changedPath).toLowerCase() === MEET_DETAILS_NAME) {
+      debouncedMeetDetailsChange();
+    } else {
+      debouncedChange();
+    }
+  };
   watcher
-    .on("change", debouncedChange)
-    .on("add",    debouncedChange)
+    .on("change", routeWatchEvent)
+    .on("add",    routeWatchEvent)
     .on("error",  (err) => {
       log(`❌ Watcher error: ${err.message}`, "error");
       writeAgentError(`File watcher error: ${err.message}`);

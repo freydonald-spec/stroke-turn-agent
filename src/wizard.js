@@ -498,12 +498,34 @@ async function reimportEventsAndHeats(db, meetId, parsed) {
   return { eventCount: parsed.events.length, heatCount: parsed.heats.length };
 }
 
+/**
+ * Refresh swimmer names ONLY for an existing meet's heats — auto-triggered when
+ * meet_details.json changes (e.g. coach substitutions). Re-writes each heat
+ * doc's lanes from the freshly parsed file. Events are left untouched, the meet
+ * doc (PINs, status, currentEvent…) and the dqs collection are never modified,
+ * and nothing is deleted — so a live meet keeps running while names update
+ * underneath it. Unlike reimportEventsAndHeats this is unattended, so it does
+ * NOT re-run the authorized-teams gate (the meet was authorized at creation).
+ *
+ * @returns { heatCount }
+ */
+async function reimportSwimmerNames(db, meetId, parsed) {
+  await commitBatches(
+    db,
+    parsed.heats,
+    (h) => doc(db, "meets", meetId, "heats", `${String(h.eventNumber)}_${String(h.heatNumber)}`),
+    (h) => ({ eventNumber: h.eventNumber, heatNumber: h.heatNumber, lanes: h.lanes }),
+  );
+  return { heatCount: parsed.heats.length };
+}
+
 module.exports = {
   parseMeetDetails,
   parseTimingConfig,
   readJsonFile,
   createMeet,
   reimportEventsAndHeats,
+  reimportSwimmerNames,
   buildJoinUrl,
   buildCoachUrl,
   // exported for potential reuse / testing
