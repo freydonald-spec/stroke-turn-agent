@@ -1006,10 +1006,55 @@ ipcMain.handle("simulator-jump-heat", (_event, n) => simulator.jumpHeat(n));
 ipcMain.handle("simulator-get-state", () => simulator.getState());
 
 // ── New Meet Setup Wizard ─────────────────────────────────────────────────────
-// Step 1: pick the Time Drops meet folder once. Scan it for the two required
-// files (meet_details.json + timing_system_configuration.json), parse the meet
-// details, and remember the folder so the watcher can start after creation.
-// Returns the meet summary + which files were found for the UI checkmarks.
+
+// Build the UI summary object from a parsed meet_details.json.
+function buildWizardSummary(parsed) {
+  return {
+    meetName: parsed.meetName,
+    meetStartDate: parsed.meetStartDate,
+    hostTeamName: parsed.hostTeamName,
+    hostAbbr: parsed.hostAbbr,
+    teams: parsed.teams,
+    visitingTeams: parsed.visitingTeams,
+    laneCount: parsed.laneCount,
+    eventCount: parsed.events.length,
+    heatCount: parsed.heats.length,
+    teamCount: parsed.teams.length,
+    meetType: parsed.meetType,
+  };
+}
+
+// Load + parse meet_details.json from an explicit path. On success, stash the
+// parsed result in wizardParsed for the create step. Returns a per-file result
+// { ok:true, summary } | { ok:false, error }.
+function wizardLoadDetails(filePath) {
+  try {
+    const parsed = wizard.parseMeetDetails(wizard.readJsonFile(filePath));
+    wizardParsed = parsed;
+    log(`📋 Meet details loaded: ${parsed.meetName || path.basename(filePath)}`, "success");
+    return { ok: true, summary: buildWizardSummary(parsed) };
+  } catch (err) {
+    log(`⚠️ Could not read meet details: ${err.message}`, "warn");
+    return { ok: false, error: err.message };
+  }
+}
+
+// Load timing_system_configuration.json from an explicit path. The parsed config
+// only feeds the lane-count display, so a present-but-unreadable file is still
+// accepted (matching the prior "file exists is enough" behavior).
+function wizardLoadTiming(filePath) {
+  try {
+    const cfg = wizard.parseTimingConfig(wizard.readJsonFile(filePath));
+    return { ok: true, config: { numberOfLanes: cfg.numberOfLanes, timingSystemType: cfg.timingSystemType } };
+  } catch {
+    return { ok: true, config: null };
+  }
+}
+
+// Step 1: pick the Time Drops meet folder once. Look for both required files in
+// its root and parse whichever are present. A missing file is NOT fatal — the
+// UI offers a manual file picker (wizard-browse-file) as a graceful fallback.
+// Returns per-file status { ok, missing?, error?, summary?/config? } for each.
 ipcMain.handle("wizard-select-folder", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: "Select Time Drops Meet Folder",
@@ -1018,64 +1063,42 @@ ipcMain.handle("wizard-select-folder", async () => {
   if (result.canceled || result.filePaths.length === 0) return { canceled: true };
 
   const folder = result.filePaths[0];
+  wizardFolder = folder;
+  wizardParsed = null; // reset any prior partial selection
+
   const detailsPath = path.join(folder, MEET_DETAILS_NAME);
   const timingPath  = path.join(folder, TIMING_CONFIG_NAME);
-  const hasDetails = fs.existsSync(detailsPath);
-  const hasTiming  = fs.existsSync(timingPath);
 
-  // Either required file missing → tell the user exactly what's absent.
-  if (!hasDetails || !hasTiming) {
-    const missing = [];
-    if (!hasDetails) missing.push(MEET_DETAILS_NAME);
-    if (!hasTiming)  missing.push(TIMING_CONFIG_NAME);
-    log(`⚠️ Meet folder missing ${missing.join(" + ")}`, "warn");
-    return {
-      success: false,
-      folder,
-      hasDetails,
-      hasTiming,
-      error: `Couldn't find ${missing.join(" and ")} in that folder. ` +
-             `Choose the Time Drops meet folder that holds your meet files.`,
-    };
-  }
+  const details = fs.existsSync(detailsPath)
+    ? wizardLoadDetails(detailsPath)
+    : { ok: false, missing: true };
+  const timing = fs.existsSync(timingPath)
+    ? wizardLoadTiming(timingPath)
+    : { ok: false, missing: true };
 
-  try {
-    const parsed = wizard.parseMeetDetails(wizard.readJsonFile(detailsPath));
-    wizardParsed = parsed;
-    wizardFolder = folder;
+  const miss = [];
+  if (details.missing) miss.push(MEET_DETAILS_NAME);
+  if (timing.missing)  miss.push(TIMING_CONFIG_NAME);
+  if (miss.length) log(`⚠️ Meet folder missing ${miss.join(" + ")} — manual pick available`, "warn");
+  else log(`📁 Meet folder loaded: ${path.basename(folder)}`, "success");
 
-    // Timing config parse is best-effort — used only for the lane-count display.
-    let config = null;
-    try {
-      const cfg = wizard.parseTimingConfig(wizard.readJsonFile(timingPath));
-      config = { numberOfLanes: cfg.numberOfLanes, timingSystemType: cfg.timingSystemType };
-    } catch { /* non-fatal: the folder is still valid for meet creation */ }
+  return { folder, details, timing };
+});
 
-    log(`📁 Meet folder loaded: ${parsed.meetName || path.basename(folder)}`, "success");
-    return {
-      success: true,
-      folder,
-      hasDetails: true,
-      hasTiming: true,
-      summary: {
-        meetName: parsed.meetName,
-        meetStartDate: parsed.meetStartDate,
-        hostTeamName: parsed.hostTeamName,
-        hostAbbr: parsed.hostAbbr,
-        teams: parsed.teams,
-        visitingTeams: parsed.visitingTeams,
-        laneCount: parsed.laneCount,
-        eventCount: parsed.events.length,
-        heatCount: parsed.heats.length,
-        teamCount: parsed.teams.length,
-        meetType: parsed.meetType,
-      },
-      config,
-    };
-  } catch (err) {
-    log(`❌ Could not read meet files: ${err.message}`, "error");
-    return { success: false, folder, hasDetails, hasTiming, error: err.message };
-  }
+// Step 1 fallback: manually browse for one of the required files when it isn't
+// in the selected folder. `which` is "details" or "timing".
+ipcMain.handle("wizard-browse-file", async (_event, which) => {
+  const targetName = which === "timing" ? TIMING_CONFIG_NAME : MEET_DETAILS_NAME;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: `Select ${targetName}`,
+    filters: [{ name: "JSON Files", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+
+  const filePath = result.filePaths[0];
+  const loaded = which === "timing" ? wizardLoadTiming(filePath) : wizardLoadDetails(filePath);
+  return { ...loaded, which, filePath };
 });
 
 // Step 4 → 5: create the meet from the parsed details + chosen meet type, then

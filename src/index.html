@@ -433,6 +433,20 @@
       font-weight: 800; color: #34d399;
     }
     .wiz-check .cf { color: #cbd5e1; font-weight: 600; }
+    /* Missing-file fallback (amber warning + manual picker) */
+    .wiz-check.warn, .wiz-check.warn .ck { color: #fbbf24; }
+    .wiz-check.warn .cf { color: #fcd9a0; }
+    .wiz-file-missing { margin-bottom: 12px; }
+    .wiz-fix-btn {
+      margin-top: 6px; padding: 7px 12px; border-radius: 8px;
+      border: 1px solid rgba(245,158,11,0.4); background: rgba(245,158,11,0.08);
+      color: #fbbf24; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .wiz-fix-btn:hover { border-color: #fbbf24; background: rgba(245,158,11,0.14); }
+    /* Optimization note under the folder picker */
+    .wiz-opt-note {
+      color: #94a3b8; font-size: 11px; font-style: italic; line-height: 1.45; margin-top: 10px;
+    }
 
     /* ── Auto-update overlay ── */
     #update-overlay {
@@ -634,7 +648,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.4</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.5</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -862,6 +876,10 @@
         <div class="wiz-sub">Select the folder containing your meet files. DQSync will find everything it needs.</div>
         <button class="wiz-btn" id="wiz-browse-folder">Browse…</button>
         <div class="wiz-err" id="wiz-folder-err"></div>
+
+        <p class="wiz-opt-note">
+          DQSync works best when meet_details.json, timing_system_configuration.json, and session result files all exist in the same folder. Live results require result files in the selected folder.
+        </p>
 
         <div id="wiz-folder-summary" style="display:none;margin-top:16px;">
           <div class="wiz-folder-path" id="wiz-folder-path"></div>
@@ -1629,7 +1647,7 @@
     const wizDots     = Array.from(document.getElementById('wiz-dots').children);
     const wizSteps    = Array.from(document.querySelectorAll('.wiz-step'));
 
-    const wiz = { step: 1, summary: null, config: null, folder: null, timingPin: null, meetType: null, created: null };
+    const wiz = { step: 1, summary: null, config: null, folder: null, details: null, timing: null, timingPin: null, meetType: null, created: null };
 
     function fmtDate(d) {
       if (!d) return '—';
@@ -1667,51 +1685,97 @@
       gotoStep(wiz.step - 1);
     });
 
-    // Step 1: select the Time Drops meet folder. Scans for both required files,
-    // shows the folder path + green checkmarks, and renders the meet summary.
+    // Step 1: select the Time Drops meet folder. Auto-detects the two required
+    // files; any that are missing fall back to a manual file picker (amber
+    // warning). Continue unlocks once both are resolved (green checkmarks).
     const folderErr     = document.getElementById('wiz-folder-err');
     const folderSummary = document.getElementById('wiz-folder-summary');
     const folderPathEl  = document.getElementById('wiz-folder-path');
     const folderChecks  = document.getElementById('wiz-folder-checks');
     const folderCard    = document.getElementById('wiz-folder-card');
     const browseFolder  = document.getElementById('wiz-browse-folder');
+    const folderNext    = document.getElementById('wiz-folder-next');
+
+    // One status row per required file: green check when found/parsed, otherwise
+    // an amber warning + "Browse for file manually" fallback button.
+    function fileCheckHtml(name, which, state) {
+      if (state && state.ok) {
+        return `<div class="wiz-check"><span class="ck">✓</span><span class="cf">${escapeHtml(name)} found</span></div>`;
+      }
+      const msg = (state && state.error && !state.missing)
+        ? `${name} could not be read`
+        : `${name} not found in selected folder`;
+      return `<div class="wiz-file-missing">
+          <div class="wiz-check warn"><span class="ck">⚠</span><span class="cf">${escapeHtml(msg)}</span></div>
+          <button type="button" class="wiz-fix-btn" data-fix="${which}">Browse for file manually</button>
+        </div>`;
+    }
+
+    function renderFolderState() {
+      folderChecks.innerHTML =
+        fileCheckHtml('meet_details.json', 'details', wiz.details) +
+        fileCheckHtml('timing_system_configuration.json', 'timing', wiz.timing);
+      folderChecks.querySelectorAll('[data-fix]').forEach((btn) => {
+        btn.addEventListener('click', () => browseForFile(btn.dataset.fix));
+      });
+
+      // Meet summary card — only when meet_details parsed OK.
+      const s = wiz.summary;
+      if (s) {
+        const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
+        rows(folderCard, [
+          ['Meet name', s.meetName || '—'],
+          ['Date', fmtDate(s.meetStartDate)],
+          ['Host team', s.hostTeamName || (s.hostAbbr || '—')],
+          [s.visitingTeams && s.visitingTeams.length > 1 ? 'Visiting teams' : 'Visiting team', visiting],
+          ['Lanes', s.laneCount || '—'],
+          ['Events', s.eventCount],
+          ['Heats', s.heatCount],
+        ]);
+        folderCard.style.display = 'block';
+      } else {
+        folderCard.innerHTML = '';
+        folderCard.style.display = 'none';
+      }
+
+      // Continue unlocks only when BOTH files are resolved.
+      const bothOk = !!(wiz.details && wiz.details.ok && wiz.timing && wiz.timing.ok);
+      folderNext.disabled = !bothOk;
+    }
 
     async function pickMeetFolder() {
       folderErr.style.display = 'none';
       const res = await window.agent.wizardSelectFolder();
       if (!res || res.canceled) return;
-      if (!res.success) {
-        folderErr.textContent = res.error || 'Could not read that folder.';
-        folderErr.style.display = 'block';
-        folderSummary.style.display = 'none';
-        browseFolder.style.display = 'block';
-        return;
-      }
-      wiz.summary = res.summary;
-      wiz.config  = res.config || null;
-      wiz.folder  = res.folder;
-      const s = res.summary;
+      wiz.folder   = res.folder;
+      wiz.details  = res.details || { ok: false, missing: true };
+      wiz.timing   = res.timing  || { ok: false, missing: true };
+      wiz.summary  = wiz.details.ok ? wiz.details.summary : null;
+      wiz.config   = wiz.timing.ok ? (wiz.timing.config || null) : null;
       folderPathEl.textContent = res.folder;
-      folderChecks.innerHTML =
-        `<div class="wiz-check"><span class="ck">✓</span><span class="cf">meet_details.json found</span></div>` +
-        `<div class="wiz-check"><span class="ck">✓</span><span class="cf">timing_system_configuration.json found</span></div>`;
-      const visiting = s.visitingTeams && s.visitingTeams.length ? s.visitingTeams.join(', ') : '—';
-      rows(folderCard, [
-        ['Meet name', s.meetName || '—'],
-        ['Date', fmtDate(s.meetStartDate)],
-        ['Host team', s.hostTeamName || (s.hostAbbr || '—')],
-        [s.visitingTeams && s.visitingTeams.length > 1 ? 'Visiting teams' : 'Visiting team', visiting],
-        ['Lanes', s.laneCount || '—'],
-        ['Events', s.eventCount],
-        ['Heats', s.heatCount],
-      ]);
+      renderFolderState();
       folderSummary.style.display = 'block';
       browseFolder.style.display = 'none';
     }
 
+    // Manual fallback: pick a specific missing file from anywhere on disk.
+    async function browseForFile(which) {
+      const res = await window.agent.wizardBrowseFile(which);
+      if (!res || res.canceled) return;
+      if (which === 'details') {
+        wiz.details = res.ok ? { ok: true, summary: res.summary } : { ok: false, error: res.error };
+        wiz.summary = res.ok ? res.summary : null;
+      } else {
+        wiz.timing = res.ok ? { ok: true, config: res.config } : { ok: false, error: res.error };
+        wiz.config = res.ok ? (res.config || null) : null;
+      }
+      renderFolderState();
+    }
+
     browseFolder.addEventListener('click', pickMeetFolder);
     document.getElementById('wiz-folder-change').addEventListener('click', pickMeetFolder);
-    document.getElementById('wiz-folder-next').addEventListener('click', () => {
+    folderNext.addEventListener('click', () => {
+      if (folderNext.disabled) return;
       if (captureTimingPin()) gotoStep(2);
     });
 

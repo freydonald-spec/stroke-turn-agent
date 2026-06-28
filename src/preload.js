@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld("agent", {
 
   // New Meet Setup Wizard
   wizardSelectFolder: () => ipcRenderer.invoke("wizard-select-folder"),
+  wizardBrowseFile: (which) => ipcRenderer.invoke("wizard-browse-file", which),
   wizardCreateMeet: (meetType, timingSystemPin) => ipcRenderer.invoke("wizard-create-meet", meetType, timingSystemPin),
   wizardStartWatching: () => ipcRenderer.invoke("wizard-start-watching"),
   copyToClipboard: (text) => ipcRenderer.invoke("copy-to-clipboard", text),
