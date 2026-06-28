@@ -366,6 +366,34 @@
     .wiz-type .t { font-size: 15px; font-weight: 700; }
     .wiz-type .d { font-size: 11px; color: #94a3b8; margin-top: 4px; line-height: 1.4; }
     .wiz-note { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+
+    /* ── "Need help deciding?" comparison (meet type step) ── */
+    .wiz-help { margin-bottom: 16px; }
+    .wiz-help-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+      color: #00c2e0; font-size: 13px; font-weight: 600;
+    }
+    .wiz-help-toggle:hover { color: #00d4f5; }
+    .wiz-help-chevron { font-size: 11px; transition: transform 0.2s; }
+    .wiz-help.open .wiz-help-chevron { transform: rotate(180deg); }
+    .wiz-help-panel { display: none; margin-top: 12px; }
+    .wiz-help.open .wiz-help-panel { display: block; }
+    .wiz-help-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .wiz-help-col {
+      border: 1px solid #1e293b; background: #0f2040; border-radius: 10px; padding: 12px;
+    }
+    .wiz-help-col h4 {
+      font-size: 12px; font-weight: 700; color: #00c2e0; margin-bottom: 9px; letter-spacing: 0.02em;
+    }
+    .wiz-help-col ul { list-style: none; margin: 0; padding: 0; }
+    .wiz-help-col li {
+      position: relative; padding-left: 13px; margin-bottom: 7px;
+      font-size: 11px; color: #cbd5e1; line-height: 1.4;
+    }
+    .wiz-help-col li:last-child { margin-bottom: 0; }
+    .wiz-help-col li::before { content: "•"; position: absolute; left: 0; color: #475569; }
+    .wiz-help-col li strong { color: #94a3b8; font-weight: 700; }
     .wiz-pin-card {
       border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
       border: 1px solid #1e293b; background: #0f2040;
@@ -606,7 +634,7 @@
     <div class="scr-pad">
       <div class="scr-title">DQSync Agent</div>
       <div class="scr-sub">Automatic heat advancement for DQSync meets</div>
-      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.2</p>
+      <p id="app-version" style="font-size:11px;color:#334155;margin-top:4px;">v1.2.3</p>
       <p id="update-status" style="font-size:11px;color:#f59e0b;margin-top:2px;display:none;"></p>
 
       <div style="margin-top:26px;">
@@ -877,6 +905,39 @@
           </button>
         </div>
         <div class="wiz-note" id="wiz-type-note"></div>
+
+        <!-- Side-by-side comparison — collapsed by default -->
+        <div class="wiz-help" id="wiz-type-help">
+          <button type="button" class="wiz-help-toggle" id="wiz-type-help-toggle" aria-expanded="false">
+            <span>Need help deciding?</span>
+            <span class="wiz-help-chevron">▾</span>
+          </button>
+          <div class="wiz-help-panel">
+            <div class="wiz-help-cols">
+              <div class="wiz-help-col">
+                <h4>Dual Meet</h4>
+                <ul>
+                  <li>CJ gives final confirmation on DQs</li>
+                  <li>CJ can call ETO unilaterally</li>
+                  <li>No Meet Referee required</li>
+                  <li>Faster workflow</li>
+                  <li><strong>Best for:</strong> dual meets</li>
+                </ul>
+              </div>
+              <div class="wiz-help-col">
+                <h4>Standard Meet</h4>
+                <ul>
+                  <li>Meet Referee gives final confirmation</li>
+                  <li>ETO requires 2 CJ signatures</li>
+                  <li>Full 3-role chain: S&amp;T → CJ → Referee</li>
+                  <li>More oversight</li>
+                  <li><strong>Best for:</strong> invitationals, championship meets</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="wiz-btn" id="wiz-type-next">Continue →</button>
       </div>
 
@@ -1680,6 +1741,8 @@
     // Step 2: meet type
     const typeBtns = Array.from(document.querySelectorAll('.wiz-type'));
     const typeNote = document.getElementById('wiz-type-note');
+    const typeHelp = document.getElementById('wiz-type-help');
+    const typeHelpToggle = document.getElementById('wiz-type-help-toggle');
 
     function selectType(t) {
       wiz.meetType = t;
@@ -1687,11 +1750,20 @@
     }
     typeBtns.forEach((b) => b.addEventListener('click', () => selectType(b.dataset.type)));
 
+    // "Need help deciding?" — expand/collapse the side-by-side comparison.
+    typeHelpToggle.addEventListener('click', () => {
+      const open = typeHelp.classList.toggle('open');
+      typeHelpToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
     function enterMeetType() {
       const auto = (wiz.summary && wiz.summary.meetType) || 'dual';
       if (!wiz.meetType) selectType(auto); else selectType(wiz.meetType);
       const n = wiz.summary ? wiz.summary.teamCount : 0;
       typeNote.textContent = `Auto-detected based on ${n} team${n === 1 ? '' : 's'} in the heat sheet — tap to override.`;
+      // Comparison starts collapsed each time the step is shown.
+      typeHelp.classList.remove('open');
+      typeHelpToggle.setAttribute('aria-expanded', 'false');
     }
     document.getElementById('wiz-type-next').addEventListener('click', () => gotoStep(3));
 
