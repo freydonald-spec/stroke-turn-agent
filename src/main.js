@@ -3,7 +3,7 @@
  * Main process: Firebase, file watcher, IPC to renderer
  */
 
-const { app, BrowserWindow, ipcMain, dialog, clipboard } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, clipboard, powerMonitor } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -1444,4 +1444,25 @@ app.on("before-quit", (event) => {
     clearTimeout(forceQuit);
     app.quit();
   });
+});
+
+// Re-establish Firestore connection after system sleep/wake. The 30s heartbeat
+// may not fire for up to 30s post-wake and the SDK socket may be stale, so force
+// an immediate heartbeat write once the OS resumes. powerMonitor ships with
+// Electron's main process — no extra dependency.
+powerMonitor.on('resume', () => {
+  console.log('[Agent] System resumed from sleep — forcing heartbeat');
+  // Small delay to let the network stack re-establish before writing.
+  setTimeout(() => {
+    writeHeartbeat().catch((err) => {
+      console.warn('[Agent] Post-resume heartbeat failed:', err.message);
+    });
+  }, 2000);
+});
+
+// Also nudge a heartbeat when the screen unlocks (often paired with wake).
+powerMonitor.on('unlock-screen', () => {
+  setTimeout(() => {
+    writeHeartbeat().catch(() => {});
+  }, 1000);
 });
